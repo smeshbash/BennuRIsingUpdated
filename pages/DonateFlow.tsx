@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { CircleCheck, Lock, ArrowLeft, ArrowRight, CreditCard, Loader2, Heart, FileText, ShieldCheck, User, Info, ChevronDown, Repeat, SquareCheck, ShieldAlert, Pencil } from 'lucide-react';
 import { DONATION_FUNDS, RAZORPAY_KEY_ID, RAZORPAY_PLAN_ID, WINGS_PILLARS } from '../constants';
-import { WingSelector } from "../components/WingSelector";
+import { WingSelector, getWingLabel } from "../components/WingSelector";
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { DonationFund } from '../types';
 
@@ -229,7 +229,7 @@ const PaymentStep: React.FC<PaymentStepProps> = ({ setStep, amount, frequency, f
              <div className="flex justify-between items-end mb-2">
                 <div>
                    <span className="font-bold text-gray-400 uppercase tracking-widest text-xs block mb-1">Confirm Donation To</span>
-                   <h3 className="font-serif-heading font-bold text-2xl text-brand-blue">Core Impact Pillars</h3>
+                   <h3 className="font-serif-heading font-bold text-2xl text-brand-blue">{getWingLabel(selectedFund)}</h3>
                 </div>
                 <div className="text-right">
                    <span className="font-bold text-gray-400 uppercase tracking-widest text-xs block mb-1">Amount</span>
@@ -473,7 +473,7 @@ const DonateFlow: React.FC = () => {
             return initiateStandardPayment(true);
         }
         
-        const description = 'Monthly Subscription for Core Impact Pillars';
+        const description = `Monthly Subscription for ${getWingLabel(selectedFund)}`;
         
         console.log("[Frontend: Subscription] Calling /api/create-subscription...");
         // 1. Create subscription on backend
@@ -581,7 +581,7 @@ const DonateFlow: React.FC = () => {
   const initiateStandardPayment = async (isFallbackMonthly: boolean = false) => {
     console.log("[Frontend: StandardPayment] Initiating standard payment. Amount:", amount, "Frequency:", frequency);
     try {
-        const description = `${isFallbackMonthly || frequency === 'monthly' ? 'Monthly Subscription (First Installment)' : 'Donation'} for Core Impact Pillars`;
+        const description = `${isFallbackMonthly || frequency === 'monthly' ? 'Monthly Subscription (First Installment)' : 'Donation'} for ${getWingLabel(selectedFund)}`;
         
         console.log("[Frontend: StandardPayment] Calling /api/create-order...");
         // 1. Create order on backend

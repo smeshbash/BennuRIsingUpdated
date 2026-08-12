@@ -8,6 +8,18 @@ interface WingSelectorProps {
   className?: string;
 }
 
+// Exported so any component displaying the selected fund/wing (e.g. the
+// donation confirmation screen) shows the same label as the selector itself,
+// instead of a separately hardcoded string that can drift out of sync.
+export const getWingLabel = (value: string): string => {
+  if (value === 'general') return 'General Fund (Where Needed Most)';
+  for (const pillar of WINGS_PILLARS) {
+    const wing = pillar.wings.find(w => w.id === value);
+    if (wing) return wing.name;
+  }
+  return 'General Fund (Where Needed Most)';
+};
+
 export const WingSelector: React.FC<WingSelectorProps> = ({ value, onChange, className = "" }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -22,14 +34,7 @@ export const WingSelector: React.FC<WingSelectorProps> = ({ value, onChange, cla
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const getSelectedLabel = () => {
-    if (value === 'general') return 'General Fund (Where Needed Most)';
-    for (const pillar of WINGS_PILLARS) {
-      const wing = pillar.wings.find(w => w.id === value);
-      if (wing) return wing.name;
-    }
-    return 'Select a Wing';
-  };
+  const getSelectedLabel = () => getWingLabel(value);
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>

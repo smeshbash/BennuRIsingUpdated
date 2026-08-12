@@ -1,0 +1,38 @@
+# Controls what gets uploaded to Cloud Build / Cloud Run on `gcloud run deploy --source .`
+# (and any future GitHub-triggered Cloud Build). Syntax matches .gitignore.
+# Files listed here still exist in git history for reference — this only keeps
+# them out of the deployed container image.
+
+.gcloudignore
+.git
+.gitignore
+.github/
+
+node_modules/
+dist/
+
+# One-off dev/debug/layout-patch scripts from earlier iterations — already
+# applied, not imported by any app code, not needed at runtime.
+fix_*.cjs
+patch*.cjs
+patch*.js
+check_*.js
+check_*.ts
+test_*.js
+test_*.cjs
+add_policy.js
+apply_policies.js
+fix_selects.js
+remove_negative_margins.cjs
+revert_objectives.cjs
+update_admin.py
+sql_instructions.txt
+
+# Database migration / RLS scripts — meant to be run manually against Supabase
+# (SQL Editor or CLI), not part of this Express/Vite app's runtime.
+*.sql
+workspace/
+
+# Supabase Edge Functions deploy separately via `supabase functions deploy`,
+# not as part of this Cloud Run service's build.
+supabase/
