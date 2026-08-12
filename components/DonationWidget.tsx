@@ -17,7 +17,10 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ className = "", default
   const [frequency, setFrequency] = useState<DonationFrequency>(defaultFrequency);
   const [amount, setAmount] = useState<number | string>(1000);
   const [funds, setFunds] = useState<DonationFund[]>(DONATION_FUNDS);
-  const [fund, setFund] = useState<string>('');
+  // Defaults to 'general' (not the first row of whatever `donation_funds`
+  // happens to return) so the selection doesn't depend on admin-configurable
+  // row order, and matches WingSelector's own fallback behavior.
+  const [fund, setFund] = useState<string>('general');
   const [isPillarsOpen, setIsPillarsOpen] = useState(true);
   const [tiers, setTiers] = useState<DonationTier[]>(DONATION_TIERS);
   const [isOther, setIsOther] = useState(false);
@@ -40,13 +43,11 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ className = "", default
       const fetchConfig = async () => {
           if (isSupabaseConfigured()) {
               const { data: dFunds } = await supabase.from('donation_funds').select('*').eq('is_active', true).order('display_order');
+              // Only replace the list of selectable funds — never overwrite whatever
+              // wing is already selected (e.g. from a shared/homepage link) just
+              // because this fetch resolved after the user had already picked one.
               if (dFunds) {
                   setFunds(dFunds);
-                  if (dFunds.length > 0) {
-                      setFund(dFunds[0].id);
-                  } else {
-                      setFund('');
-                  }
               }
 
               // Fetch Tiers & Labels

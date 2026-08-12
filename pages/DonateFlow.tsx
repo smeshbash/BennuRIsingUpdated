@@ -382,20 +382,24 @@ const DonateFlow: React.FC = () => {
               }
           });
           
-          // Fetch Funds
+          // Fetch Funds (kept for any other consumers of `funds`; no longer used to
+          // validate the selected wing — see note below)
           supabase.from('donation_funds').select('*').eq('is_active', true).order('display_order')
           .then(({data}) => {
               if (data) {
                   setFunds(data);
-                  if (data.length > 0) {
-                      // Validate initial fund selection against DB funds
-                      const isValid = data.some((f: any) => f.id === initialFundId);
-                      if (!isValid) setSelectedFund(data[0].id);
-                  } else {
-                      setSelectedFund('');
-                  }
               }
           });
+
+          // Validate the initial fund/wing selection against WINGS_PILLARS — the
+          // actual source the WingSelector UI is built from — instead of the
+          // separate `donation_funds` Supabase table, which uses a different set
+          // of IDs entirely. Validating against the wrong list was silently
+          // resetting any wing selection (e.g. from the homepage widget or a
+          // shared link) back to whatever the first `donation_funds` row was.
+          const isValidWing = initialFundId === 'general' ||
+              WINGS_PILLARS.some(pillar => pillar.wings.some(w => w.id === initialFundId));
+          if (!isValidWing) setSelectedFund('general');
       }
   }, [initialFundId]);
   
