@@ -1,0 +1,5 @@
+-- DO NOT RUN: this used to open donations INSERT to anyone with the public anon
+-- key (WITH CHECK (true)), letting arbitrary rows be forged, including
+-- is_verified: true, with no real payment. Donations are now written only by
+-- the service-role webhook — see lock_down_donations_writes.sql instead.
+-- CREATE POLICY "Public insert donations" ON public.donations FOR INSERT WITH CHECK (true);

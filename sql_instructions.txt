@@ -1,0 +1,5 @@
+You will need to manually apply this schema change to your Supabase project using the Supabase SQL Editor.
+
+Here is the exact command you need to run:
+
+ALTER TABLE public.partnership_inquiries ADD COLUMN IF NOT EXISTS logo_url text;

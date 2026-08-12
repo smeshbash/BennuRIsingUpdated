@@ -1,0 +1,9 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    # Security updates (like the lodash/quill vulnerabilities found earlier)
+    # are opened regardless of this schedule, as soon as GitHub detects them.
