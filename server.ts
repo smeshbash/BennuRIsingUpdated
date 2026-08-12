@@ -194,20 +194,43 @@ async function startServer() {
 
 
   // Create Subscription Endpoint
+  //
+  // Razorpay Subscriptions are bound to a fixed-amount "Plan" — a Plan can't hold a
+  // variable/custom amount, and a single static plan_id (the old approach) means
+  // every donor gets charged whatever that one Plan says, ignoring whatever amount
+  // they actually picked (₹1000 / ₹2500 / ₹5000 / custom). To support the donor's
+  // chosen amount correctly, we create a fresh Plan matching their exact amount at
+  // subscribe-time, then subscribe them to it. Razorpay Plans are lightweight — this
+  // just means the Dashboard accumulates one Plan per distinct amount subscribed to,
+  // which is harmless.
   app.post('/api/create-subscription', async (req, res) => {
     console.log("\n[API: /create-subscription] Received request:", req.body);
     try {
-      const { plan_id, total_count = 120, notes } = req.body;
+      const { amount, total_count = 120, notes } = req.body;
 
-      if (!plan_id) {
-          console.error("[API: /create-subscription] Validation failed: plan_id is missing");
-          return res.status(400).json({ error: "plan_id is required" });
+      const amountInPaise = Math.round(Number(amount) * 100);
+      if (!amount || !Number.isFinite(amountInPaise) || amountInPaise < 100) {
+          console.error("[API: /create-subscription] Validation failed: amount missing or below ₹1");
+          return res.status(400).json({ error: "Minimum amount is ₹1" });
       }
 
       const rzp = getRazorpay();
+
+      const plan = await rzp.plans.create({
+        period: 'monthly',
+        interval: 1,
+        item: {
+            name: `Monthly Donation - ₹${amount}`,
+            amount: amountInPaise,
+            currency: 'INR',
+        },
+        notes: notes || {},
+      });
+      console.log("[API: /create-subscription] Created Plan:", plan.id, "for amount (paise):", amountInPaise);
+
       const options = {
-        plan_id,
-        customer_notify: 1,
+        plan_id: plan.id,
+        customer_notify: 1 as const,
         total_count,
         // Attached to the subscription itself (not just the first payment), so every
         // auto-charged recurring payment inherits these notes too. Recurring charges

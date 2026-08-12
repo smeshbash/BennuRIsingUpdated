@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { CircleCheck, Lock, ArrowLeft, ArrowRight, CreditCard, Loader2, Heart, FileText, ShieldCheck, User, Info, ChevronDown, Repeat, SquareCheck, ShieldAlert, Pencil } from 'lucide-react';
-import { DONATION_FUNDS, RAZORPAY_KEY_ID, RAZORPAY_PLAN_ID, WINGS_PILLARS } from '../constants';
+import { DONATION_FUNDS, RAZORPAY_KEY_ID, WINGS_PILLARS } from '../constants';
 import { WingSelector, getWingLabel } from "../components/WingSelector";
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { DonationFund } from '../types';
@@ -364,20 +364,17 @@ const DonateFlow: React.FC = () => {
   
   // Dynamic Keys
   const [razorpayKey, setRazorpayKey] = useState(RAZORPAY_KEY_ID);
-  const [razorpayPlan, setRazorpayPlan] = useState(RAZORPAY_PLAN_ID);
   const [enable80gTaxExemption, setEnable80gTaxExemption] = useState(false);
-  
+
   useEffect(() => {
       if(isSupabaseConfigured()) {
           // Fetch Settings
-          supabase.from('system_settings').select('*').in('key', ['razorpay_key_id', 'razorpay_plan_id', 'enable_80g_tax_exemption'])
+          supabase.from('system_settings').select('*').in('key', ['razorpay_key_id', 'enable_80g_tax_exemption'])
           .then(({data}) => {
               if (data) {
                   const k = data.find(d => d.key === 'razorpay_key_id')?.value;
-                  const p = data.find(d => d.key === 'razorpay_plan_id')?.value;
                   const tax = data.find(d => d.key === 'enable_80g_tax_exemption')?.value;
                   if (k) setRazorpayKey(k);
-                  if (p) setRazorpayPlan(p);
                   if (tax) setEnable80gTaxExemption(tax === 'true');
               }
           });
@@ -470,22 +467,24 @@ const DonateFlow: React.FC = () => {
   };
   
   const createSubscription = async () => {
-    console.log("[Frontend: Subscription] Initiating subscription. Plan:", razorpayPlan);
+    console.log("[Frontend: Subscription] Initiating subscription. Amount:", amount);
     try {
-        if (!razorpayPlan) {
+        if (!amount || Number(amount) <= 0) {
             // Muted
             return initiateStandardPayment(true);
         }
-        
+
         const description = `Monthly Subscription for ${getWingLabel(selectedFund)}`;
-        
+
         console.log("[Frontend: Subscription] Calling /api/create-subscription...");
-        // 1. Create subscription on backend
+        // 1. Create subscription on backend — the backend creates a Razorpay Plan
+        // matching this exact amount and subscribes to that, so the recurring charge
+        // actually matches what the donor picked here (not a fixed static plan_id).
         const subRes = await fetch('/api/create-subscription', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                plan_id: razorpayPlan,
+                amount: Number(amount),
                 // Attached to the subscription so every future recurring charge
                 // carries this data too, not just the first payment.
                 notes: {
@@ -679,7 +678,7 @@ const DonateFlow: React.FC = () => {
   
   const handleRazorpayPayment = () => {
     setLoading(true);
-    if (frequency === 'monthly' && razorpayPlan) {
+    if (frequency === 'monthly') {
         createSubscription();
     } else {
         initiateStandardPayment();

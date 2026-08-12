@@ -5106,7 +5106,6 @@ const GlobalConfigManager = () => {
     "contact_email",
     "footer_slogan",
     "razorpay_key_id",
-    "razorpay_plan_id",
     "visitor_baseline_count",
     "visitor_tracker_enabled",
     "enable_80g_tax_exemption",
@@ -5118,7 +5117,6 @@ const GlobalConfigManager = () => {
     contact_email: "e.g., contact@bennurising.org",
     footer_slogan: "e.g., Empowering communities worldwide.",
     razorpay_key_id: "e.g., rzp_live_xxxxxxxxxxxxxx",
-    razorpay_plan_id: "e.g., plan_xxxxxxxxxxxxxx",
     visitor_baseline_count: "e.g., 124830",
     visitor_tracker_enabled: "e.g., true",
     enable_80g_tax_exemption: "e.g., true",
@@ -5268,22 +5266,10 @@ const GlobalConfigManager = () => {
                 placeholder={PLACEHOLDERS["razorpay_key_id"]}
               />
             </div>
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase">
-                Razorpay Plan ID (Subscriptions)
-              </label>
-              <p className="text-[10px] text-gray-400 mb-1">
-                Your Razorpay Plan ID (used for recurring monthly donations).
-              </p>
-              <input
-                value={config["razorpay_plan_id"] || ""}
-                onChange={(e) =>
-                  setConfig({ ...config, razorpay_plan_id: e.target.value })
-                }
-                className="w-full border p-2 rounded-lg font-mono text-sm"
-                placeholder={PLACEHOLDERS["razorpay_plan_id"]}
-              />
-            </div>
+            {/* razorpay_plan_id field removed — /api/create-subscription now creates
+                a Razorpay Plan matching each donor's exact amount on the fly (see
+                server.ts), instead of relying on one static admin-configured plan_id
+                that ignored whatever amount the donor actually picked. */}
           </div>
         </div>
 

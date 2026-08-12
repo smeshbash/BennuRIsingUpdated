@@ -10,7 +10,9 @@ export const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || '';
 if (!RAZORPAY_KEY_ID) {
   console.error('[Razorpay] VITE_RAZORPAY_KEY_ID is not set. Add it to your .env file and restart the dev server.');
 }
-export const RAZORPAY_PLAN_ID = 'plan_Ouj8wX2m4l5n7'; // Example Plan ID. Replace with yours from Razorpay Dashboard > Subscriptions > Plans
+// No static RAZORPAY_PLAN_ID anymore — /api/create-subscription creates a Razorpay
+// Plan on the fly matching each donor's exact chosen amount (see server.ts), since a
+// single fixed Plan can't represent the ₹1000 / ₹2500 / ₹5000 / custom options here.
 
 export const DONATION_TIERS: DonationTier[] = [
   { amount: 1000, label: "Support a Student's Education Kit" },
