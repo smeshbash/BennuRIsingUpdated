@@ -57,6 +57,17 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=Great+Vibes&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
     <style>
+      html, body {
+        /* Defensive safety net: the page normally fits with only a small margin
+           to spare (a few px), and some browsers (e.g. Opera GX, which reserves
+           horizontal space for its sidebar) end up with slightly less usable
+           viewport width than others, tipping otherwise-clipped wide elements
+           (like the testimonials marquee) into producing a horizontal
+           scrollbar. Nothing meaningful ever needs horizontal scroll on this
+           site, so hiding overflow-x here is safe and prevents this kind of
+           cross-browser rounding difference from ever surfacing as a bug. */
+        overflow-x: hidden;
+      }
       body {
         font-family: 'Inter', sans-serif;
         background-color: #E6E9EF; /* Base for Neumorphism */
