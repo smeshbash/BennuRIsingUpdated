@@ -92,6 +92,7 @@ import {
   AlertCircle,
   ListTodo,
   Award, Pencil,
+  Megaphone,
 } from "lucide-react";
 import {
   BLOG_POSTS,
@@ -126,6 +127,7 @@ type AdminView =
   | "testimonials"
   | "mission"
   | "funds"
+  | "announcements"
   | "legal"
   | "global-config"
   | "admin-users"
@@ -4504,6 +4506,232 @@ const FundsManager = () => {
   );
 };
 
+const ANNOUNCEMENT_LABELS = ["", "NEW", "URGENT", "EVENT"];
+
+const AnnouncementsManager = () => {
+  const [items, setItems] = useState<any[]>([]);
+  const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchItems = async () => {
+    if (isSupabaseConfigured()) {
+      const { data } = await supabase
+        .from("announcements")
+        .select("*")
+        .neq("is_deleted", true)
+        .order("display_order");
+      if (data) setItems(data);
+    }
+  };
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  const saveItem = async () => {
+    if (!editingItem.message) {
+      customAlert("Message is required.");
+      return;
+    }
+    if (isSupabaseConfigured()) {
+      setLoading(true);
+      const { display_order, ...updateData } = editingItem;
+      // Empty-string label means "no tag chip" — store as null rather than ""
+      // so the frontend's `item.label &&` check behaves consistently.
+      const payload = { ...updateData, label: updateData.label || null };
+      const { data, error } = await supabase
+        .from("announcements")
+        .upsert(payload)
+        .select();
+      setLoading(false);
+      if (error) customAlert("Error: " + error.message);
+      else if (!data || data.length === 0) customAlert("Permission denied.");
+      else {
+        setEditingItem(null);
+        fetchItems();
+      }
+    } else {
+      customAlert("Connect DB to save.");
+    }
+  };
+
+  const deleteItem = async (id: number) => {
+    if (await customConfirm("Delete this announcement?")) {
+      if (isSupabaseConfigured()) {
+        const { error } = await supabase
+          .from("announcements")
+          .update({ is_deleted: true })
+          .eq("id", id);
+        if (error) customAlert("Error deleting: " + error.message);
+        else fetchItems();
+      }
+    }
+  };
+
+  return (
+    <div className="animate-fade-in space-y-8">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-brand-blue">Announcement Bar</h2>
+        <button
+          onClick={() =>
+            setEditingItem({ message: "", label: "", link_url: "", is_active: true })
+          }
+          className="bg-brand-blue text-white px-4 py-2 rounded-xl font-bold flex items-center"
+        >
+          <Plus className="w-4 h-4 mr-2" /> Add Announcement
+        </button>
+      </div>
+      <p className="text-sm text-gray-500 -mt-6">
+        These scroll in the ticker bar above the header, site-wide. Order below is the
+        scroll order.
+      </p>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold">
+            <tr>
+              <th className="px-6 py-4">Tag</th>
+              <th className="px-6 py-4">Message</th>
+              <th className="px-6 py-4">Status</th>
+              <th className="px-6 py-4">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <tr
+                key={item.id}
+                className="hover:bg-gray-50 border-b border-gray-50 last:border-0"
+              >
+                <td className="px-6 py-4">
+                  {item.label ? (
+                    <span
+                      className={`px-2 py-1 rounded text-[10px] font-extrabold uppercase ${
+                        item.label === "URGENT"
+                          ? "bg-red-100 text-red-700"
+                          : item.label === "NEW"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-amber-100 text-amber-700"
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                  ) : (
+                    <span className="text-gray-300 text-xs">—</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 font-medium text-gray-800 max-w-md truncate">
+                  {item.message}
+                </td>
+                <td className="px-6 py-4">
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-bold ${item.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
+                  >
+                    {item.is_active ? "Active" : "Inactive"}
+                  </span>
+                </td>
+                <td className="px-6 py-4 flex space-x-2">
+                  <button
+                    onClick={() => setEditingItem(item)}
+                    className="text-brand-blue hover:text-blue-700"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => deleteItem(item.id)}
+                    className="text-red-400 hover:text-red-600"
+                  >
+                    <Trash className="w-4 h-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {items.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-6 py-8 text-center text-gray-400 text-sm">
+                  No announcements yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <Modal
+        isOpen={!!editingItem}
+        onClose={() => setEditingItem(null)}
+        title={editingItem?.id ? "Edit Announcement" : "New Announcement"}
+      >
+        {editingItem && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                Message
+              </label>
+              <textarea
+                value={editingItem.message}
+                onChange={(e) =>
+                  setEditingItem({ ...editingItem, message: e.target.value })
+                }
+                className="w-full border p-2 rounded-lg"
+                rows={2}
+                placeholder="e.g. Registrations for the Winter Health Camp are now open"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                Tag
+              </label>
+              <select
+                value={editingItem.label || ""}
+                onChange={(e) =>
+                  setEditingItem({ ...editingItem, label: e.target.value })
+                }
+                className="w-full border p-2 rounded-lg"
+              >
+                {ANNOUNCEMENT_LABELS.map((l) => (
+                  <option key={l} value={l}>
+                    {l || "No tag"}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                Link URL (optional)
+              </label>
+              <input
+                value={editingItem.link_url || ""}
+                onChange={(e) =>
+                  setEditingItem({ ...editingItem, link_url: e.target.value })
+                }
+                className="w-full border p-2 rounded-lg"
+                placeholder="https://..."
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={editingItem.is_active}
+                onChange={(e) =>
+                  setEditingItem({ ...editingItem, is_active: e.target.checked })
+                }
+                className="w-4 h-4"
+              />
+              <label className="text-sm font-bold text-gray-700">
+                Active (Visible on site)
+              </label>
+            </div>
+            <button
+              onClick={saveItem}
+              disabled={loading}
+              className="w-full bg-brand-green text-white py-3 rounded-xl font-bold mt-4"
+            >
+              {loading ? "Saving..." : "Save Announcement"}
+            </button>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+};
+
 const MissionManager = ({
   userRole,
   userEmail,
@@ -6021,6 +6249,12 @@ export const AdminDashboard: React.FC = () => {
       icon: Wallet,
       roles: ["super_admin", "volunteer_manager", "viewer", "stakeholder"],
     },
+    {
+      id: "announcements",
+      label: "Announcement Bar",
+      icon: Megaphone,
+      roles: ["super_admin", "content_manager", "content_creator", "viewer", "stakeholder"],
+    },
   ];
 
   const handleLogout = async () => {
@@ -6188,6 +6422,7 @@ export const AdminDashboard: React.FC = () => {
             )}
             {activeView === "setup" && <BackendSetupView />}
             {activeView === "funds" && <FundsManager />}
+            {activeView === "announcements" && <AnnouncementsManager />}
             {activeView === "mission" && (
               <MissionManager
                 userRole={adminRole}

@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import AnnouncementBar from './components/AnnouncementBar';
 import Home from './pages/Home';
 import DonateFlow from './pages/DonateFlow';
 import { AboutPage, WorkPage, GalleryPage, PartnersPage, ImpactPage, BlogPage, VolunteerPage, InternshipPage, VolunteerSignupPage, InternshipSignupPage, PrivacyPage, TermsPage, RefundPage } from './pages/ContentPages';
@@ -75,6 +76,7 @@ const App = () => {
 
   return (
     <div className="flex flex-col min-h-screen font-sans text-gray-900 relative">
+      {!isAdminRoute && <AnnouncementBar />}
       {!isAdminRoute && <Header />}
       <main className="flex-grow">
         <Routes>
