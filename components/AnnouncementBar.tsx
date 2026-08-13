@@ -91,7 +91,10 @@ export const AnnouncementBar: React.FC = () => {
     <div className="w-full bg-brand-dark overflow-hidden relative border-b border-white/10">
       <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-brand-dark to-transparent z-10 pointer-events-none"></div>
       <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-brand-dark to-transparent z-10 pointer-events-none"></div>
-      <div className="flex w-max animate-marquee hover:pause py-2">
+      {/* Reversed relative to the testimonials marquee (which scrolls
+          left-to-right) so the two ticker effects on the page move in
+          opposite directions rather than feeling like duplicates. */}
+      <div className="flex w-max animate-marquee-reverse hover:pause py-2">
         {marqueeContent.map((item, i) => renderItem(item, `${item.id}-${i}`))}
       </div>
     </div>

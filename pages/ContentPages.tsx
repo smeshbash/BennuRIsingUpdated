@@ -1114,7 +1114,7 @@ export const VolunteerSignupPage: React.FC = () => {
     const [step, setStep] = useState(1);
     
     // Split amounts
-    const MANDATORY_FEE = 10;
+    const MANDATORY_FEE = 101;
     const [optionalDonation, setOptionalDonation] = useState<number | ''>('');
     const totalAmount = MANDATORY_FEE + (Number(optionalDonation) || 0);
 
@@ -1222,13 +1222,6 @@ export const VolunteerSignupPage: React.FC = () => {
         rzp.open();
     };
 
-    const simulatePayment = async () => {
-        setLoading(true);
-        // Simulate API delay
-        setTimeout(async () => {
-             await handleFinalSubmit(`sim_${Math.random().toString(36).substring(2, 10)}`);
-        }, 1500);
-    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -1359,7 +1352,7 @@ export const VolunteerSignupPage: React.FC = () => {
                                 </select>
                             </div>
                             <button type="submit" className="w-full bg-gradient-to-r from-brand-blue to-blue-800 text-white font-bold py-5 rounded-2xl shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center text-lg uppercase tracking-wider group">Proceed to Contribution <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" /></button>
-                            <p className="text-xs text-gray-500 font-medium text-center mt-4 bg-blue-50 p-2 rounded-lg border border-blue-100">Note: A mandatory ₹10 registration fee is charged. You can also contribute more.</p>
+                            <p className="text-xs text-gray-500 font-medium text-center mt-4 bg-blue-50 p-2 rounded-lg border border-blue-100">Note: A mandatory ₹101 registration fee is charged. You can also contribute more.</p>
                         </form>
                     )}
 
@@ -1372,7 +1365,7 @@ export const VolunteerSignupPage: React.FC = () => {
                                     <CreditCard className="w-8 h-8 text-brand-blue" />
                                 </div>
                                 <h3 className="text-xl font-bold text-gray-800 mb-2">Registration Contribution</h3>
-                                <p className="text-gray-500 text-sm max-w-xs mx-auto mb-6">A mandatory fee of ₹10 helps process your application. You can optionally add a donation.</p>
+                                <p className="text-gray-500 text-sm max-w-xs mx-auto mb-6">A mandatory fee of ₹101 helps process your application. You can optionally add a donation.</p>
                             </div>
 
                             <div className="bg-white p-6 rounded-2xl shadow-inner border border-gray-100 space-y-4">
@@ -1417,9 +1410,6 @@ export const VolunteerSignupPage: React.FC = () => {
                             </div>
 
                             <div className="flex gap-4">
-                                <button onClick={simulatePayment} disabled={loading} className="px-6 py-4 rounded-xl font-bold text-gray-100 bg-gray-800 hover:bg-gray-900 transition-all border border-gray-600 uppercase tracking-wider">
-                                    Simulate
-                                </button>
                                 <button onClick={initiatePayment} disabled={loading} className="flex-1 bg-gradient-to-r from-brand-green to-[#43a047] text-white font-bold py-4 rounded-2xl shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center disabled:opacity-70 text-lg uppercase tracking-wider">
                                     {loading ? <Loader2 className="animate-spin w-6 h-6" /> : `Pay ₹${totalAmount} & Join`}
                                 </button>
@@ -1695,7 +1685,7 @@ export const InternshipSignupPage: React.FC = () => {
     const [step, setStep] = useState(1);
     
     // Split amounts
-    const MANDATORY_FEE = 10;
+    const MANDATORY_FEE = 101;
     const [optionalDonation, setOptionalDonation] = useState<number | ''>('');
     const totalAmount = MANDATORY_FEE + (Number(optionalDonation) || 0);
 
@@ -1745,13 +1735,6 @@ export const InternshipSignupPage: React.FC = () => {
         }
     };
 
-    const simulatePayment = async () => {
-        setLoading(true);
-        // Simulate API delay
-        setTimeout(async () => {
-             await saveApplication(`sim_${Math.random().toString(36).substring(2, 10)}`);
-        }, 1500);
-    };
 
     const saveApplication = async (paymentId: string | null) => {
         if (paymentId) {
@@ -1872,9 +1855,6 @@ export const InternshipSignupPage: React.FC = () => {
                                 <div className="flex gap-4">
                                     <button type="button" onClick={() => setStep(1)} className="px-6 py-4 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all">
                                         Back
-                                    </button>
-                                    <button type="button" onClick={simulatePayment} disabled={loading} className="px-6 py-4 rounded-xl font-bold text-gray-100 bg-gray-800 hover:bg-gray-900 transition-all border border-gray-600">
-                                        Simulate
                                     </button>
                                     <button type="submit" disabled={loading} className="flex-1 bg-brand-blue text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center disabled:opacity-70">
                                         {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : `Pay ₹${totalAmount} & Submit`}

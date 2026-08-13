@@ -34,6 +34,7 @@
             },
             animation: {
               'marquee': 'marquee 40s linear infinite',
+              'marquee-reverse': 'marquee-reverse 40s linear infinite',
               'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
               'float': 'float 6s ease-in-out infinite',
             },
@@ -41,6 +42,10 @@
               marquee: {
                 '0%': { transform: 'translateX(-50%)' },
                 '100%': { transform: 'translateX(0%)' },
+              },
+              'marquee-reverse': {
+                '0%': { transform: 'translateX(0%)' },
+                '100%': { transform: 'translateX(-50%)' },
               },
               fadeInUp: {
                 '0%': { opacity: '0', transform: 'translateY(20px)' },
