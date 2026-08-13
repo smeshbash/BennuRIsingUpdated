@@ -2056,7 +2056,7 @@ const VolunteersManager = () => {
                 <th className="px-6 py-4">Name</th>
                 <th className="px-6 py-4">Email / Phone</th>
                 <th className="px-6 py-4">Type & Interest</th>
-                <th className="px-6 py-4">Razorpay Link</th>
+                <th className="px-6 py-4">Personalized Link</th>
                 <th className="px-6 py-4">
                   {tab === "active" ? "Raised" : "Payment"}
                 </th>
@@ -2086,10 +2086,23 @@ const VolunteersManager = () => {
                       {v.interest}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-xs text-blue-500 max-w-[150px] truncate">
-                    <a href={v.razorpay_link} target="_blank" rel="noreferrer">
-                      {v.razorpay_link || "-"}
-                    </a>
+                  <td className="px-6 py-4 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-gray-400" title="Application ID">
+                        #{v.id}
+                      </span>
+                      <button
+                        onClick={() => {
+                          const link = `${window.location.origin}/#/donate?vid=${v.id}`;
+                          navigator.clipboard.writeText(link);
+                          customAlert("Personalized link copied to clipboard!");
+                        }}
+                        title="Copy this person's auto-tracking donate link"
+                        className="text-brand-blue hover:text-blue-700 flex items-center gap-1 font-bold"
+                      >
+                        <Copy className="w-3.5 h-3.5" /> Copy
+                      </button>
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-xs font-mono">
                     {tab === "active"

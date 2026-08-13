@@ -768,45 +768,25 @@ export const ContributorPortal: React.FC<{ portalType?: 'internship' | 'voluntee
                     </div>
                     
                     <h2 className="text-3xl md:text-4xl font-serif-heading font-bold text-gray-900 mb-3">Track Your Impact</h2>
-                    <p className="text-gray-500 text-lg mb-8">Save your personal Razorpay donation link to track the funds you raise.</p>
+                    <p className="text-gray-500 text-lg mb-8">Share your personal link — every donation through it is tracked automatically, no setup required.</p>
 
                     <div className="grid md:grid-cols-2 gap-8">
                         <div className={`rounded-3xl p-6 md:p-8 ${isIntern ? 'bg-[#FDF6F0]' : 'bg-[#F0F7FD]'}`}>
                             <h3 className="font-bold text-xl text-gray-900 mb-2">Your Personal Link</h3>
-                            <p className="text-sm text-gray-600 mb-6">Share this link with your network to collect donations.</p>
-                            
+                            <p className="text-sm text-gray-600 mb-6">Share this link with your network — donations made through it count toward your total automatically.</p>
+
                             <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Razorpay Payment Link</label>
-                                    <input 
-                                        type="url" 
-                                        value={razorpayLink}
-                                        onChange={e => setRazorpayLink(e.target.value)}
-                                        placeholder="https://rzp.io/l/..."
-                                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-blue"
-                                    />
-                                </div>
-                                <button 
-                                    onClick={saveRazorpayLink}
-                                    disabled={savingLink || !razorpayLink.trim() || razorpayLink === application.razorpay_link}
-                                    className={`w-full py-3 rounded-xl text-white font-bold text-sm ${themeBg} disabled:opacity-50 hover:opacity-90 transition-opacity flex items-center justify-center`}
-                                >
-                                    {savingLink ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Link'}
-                                </button>
-                                
-                                <div className="mt-6 p-4 bg-white rounded-xl border border-gray-100">
-                                    <p className="text-xs font-bold text-gray-500 uppercase mb-1">Your Auto-Tracking URL</p>
-                                    <p className="text-xs text-gray-600 mb-2">Share this exact URL to track your donations automatically through the platform:</p>
+                                <div className="p-4 bg-white rounded-xl border border-gray-100">
                                     <div className="flex items-center gap-2">
-                                        <input 
-                                            readOnly 
-                                            value={`${window.location.origin}/donate?vid=${application.id}`}
+                                        <input
+                                            readOnly
+                                            value={`${window.location.origin}/#/donate?vid=${application.id}`}
                                             className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono text-gray-600"
                                         />
-                                        <button 
+                                        <button
                                             onClick={() => {
-                                                navigator.clipboard.writeText(`${window.location.origin}/donate?vid=${application.id}`);
-                                                alert("Tracking URL copied to clipboard!");
+                                                navigator.clipboard.writeText(`${window.location.origin}/#/donate?vid=${application.id}`);
+                                                alert("Link copied to clipboard!");
                                             }}
                                             className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold transition-colors"
                                         >
@@ -814,6 +794,32 @@ export const ContributorPortal: React.FC<{ portalType?: 'internship' | 'voluntee
                                         </button>
                                     </div>
                                 </div>
+
+                                <details className="text-sm">
+                                    <summary className="cursor-pointer font-bold text-gray-500 uppercase text-xs tracking-wider">
+                                        Advanced: use an external Razorpay link instead
+                                    </summary>
+                                    <div className="mt-4 space-y-3">
+                                        <p className="text-xs text-gray-500">
+                                            Only needed if you already have a fixed-amount Razorpay Payment Link set up
+                                            elsewhere. Otherwise the link above already tracks everything for you.
+                                        </p>
+                                        <input
+                                            type="url"
+                                            value={razorpayLink}
+                                            onChange={e => setRazorpayLink(e.target.value)}
+                                            placeholder="https://rzp.io/l/..."
+                                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-blue"
+                                        />
+                                        <button
+                                            onClick={saveRazorpayLink}
+                                            disabled={savingLink || !razorpayLink.trim() || razorpayLink === application.razorpay_link}
+                                            className={`w-full py-3 rounded-xl text-white font-bold text-sm ${themeBg} disabled:opacity-50 hover:opacity-90 transition-opacity flex items-center justify-center`}
+                                        >
+                                            {savingLink ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Link'}
+                                        </button>
+                                    </div>
+                                </details>
                             </div>
                         </div>
 
