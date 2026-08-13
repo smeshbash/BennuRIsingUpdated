@@ -25,15 +25,16 @@ interface DetailsFormProps {
     handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
     wantsTaxReceipt: boolean;
     enable80gTaxExemption: boolean;
+    enableMonthly: boolean;
     setWantsTaxReceipt: (val: boolean) => void;
     loading: boolean;
     submitDetails: (e: React.FormEvent) => void;
 }
 
 const DetailsForm: React.FC<DetailsFormProps> = ({
-    amount, setAmount, frequency, setFrequency, freqLabel, funds, selectedFund, setSelectedFund, 
-    formData, handleInputChange, wantsTaxReceipt, setWantsTaxReceipt, 
-    loading, submitDetails, enable80gTaxExemption
+    amount, setAmount, frequency, setFrequency, freqLabel, funds, selectedFund, setSelectedFund,
+    formData, handleInputChange, wantsTaxReceipt, setWantsTaxReceipt,
+    loading, submitDetails, enable80gTaxExemption, enableMonthly
 }) => {
     const [isPillarsOpen, setIsPillarsOpen] = useState(true);
     return (
@@ -64,22 +65,28 @@ const DetailsForm: React.FC<DetailsFormProps> = ({
                                 placeholder="Amount"
                             />
                         </div>
-                        <div className="flex bg-white/20 p-1 rounded-xl w-fit">
-                            <button 
-                                type="button"
-                                onClick={() => setFrequency('once')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${frequency === 'once' ? 'bg-white text-brand-blue shadow-sm' : 'text-blue-100 hover:text-white'}`}
-                            >
+                        {enableMonthly ? (
+                            <div className="flex bg-white/20 p-1 rounded-xl w-fit">
+                                <button
+                                    type="button"
+                                    onClick={() => setFrequency('once')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${frequency === 'once' ? 'bg-white text-brand-blue shadow-sm' : 'text-blue-100 hover:text-white'}`}
+                                >
+                                    One-time
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFrequency('monthly')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${frequency === 'monthly' ? 'bg-white text-brand-blue shadow-sm' : 'text-blue-100 hover:text-white'}`}
+                                >
+                                    Monthly
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="bg-white/20 px-4 py-2 rounded-xl w-fit text-sm font-bold text-white">
                                 One-time
-                            </button>
-                            <button 
-                                type="button"
-                                onClick={() => setFrequency('monthly')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${frequency === 'monthly' ? 'bg-white text-brand-blue shadow-sm' : 'text-blue-100 hover:text-white'}`}
-                            >
-                                Monthly
-                            </button>
-                        </div>
+                            </div>
+                        )}
                     </div>
                     <div className="text-xs text-blue-300 mt-2 flex items-center font-bold uppercase tracking-wider">
                         <Pencil className="w-3 h-3 mr-1" /> Tap amount to edit
@@ -365,20 +372,26 @@ const DonateFlow: React.FC = () => {
   // Dynamic Keys
   const [razorpayKey, setRazorpayKey] = useState(RAZORPAY_KEY_ID);
   const [enable80gTaxExemption, setEnable80gTaxExemption] = useState(false);
+  // Defaults to enabled — see the matching note in DonationWidget.tsx. A
+  // misconfigured/unreachable Supabase should never silently hide monthly
+  // donations; disabling it is an explicit admin action via Global Config.
+  const [enableMonthly, setEnableMonthly] = useState(true);
 
   useEffect(() => {
       if(isSupabaseConfigured()) {
           // Fetch Settings
-          supabase.from('system_settings').select('*').in('key', ['razorpay_key_id', 'enable_80g_tax_exemption'])
+          supabase.from('system_settings').select('*').in('key', ['razorpay_key_id', 'enable_80g_tax_exemption', 'enable_monthly_donations'])
           .then(({data}) => {
               if (data) {
                   const k = data.find(d => d.key === 'razorpay_key_id')?.value;
                   const tax = data.find(d => d.key === 'enable_80g_tax_exemption')?.value;
+                  const monthlyEnabled = data.find(d => d.key === 'enable_monthly_donations')?.value;
                   if (k) setRazorpayKey(k);
                   if (tax) setEnable80gTaxExemption(tax === 'true');
+                  if (monthlyEnabled !== undefined) setEnableMonthly(monthlyEnabled === 'true');
               }
           });
-          
+
           // Fetch Funds (kept for any other consumers of `funds`; no longer used to
           // validate the selected wing — see note below)
           supabase.from('donation_funds').select('*').eq('is_active', true).order('display_order')
@@ -399,7 +412,17 @@ const DonateFlow: React.FC = () => {
           if (!isValidWing) setSelectedFund('general');
       }
   }, [initialFundId]);
-  
+
+  // If monthly resolves as disabled (or gets disabled) while "monthly" is
+  // selected — including via a shared/bookmarked link with ?freq=monthly —
+  // fall back to one-time so a donor never lands on an option that's no
+  // longer offered.
+  useEffect(() => {
+      if (!enableMonthly && frequency === 'monthly') {
+          setFrequency('once');
+      }
+  }, [enableMonthly]);
+
   const [formData, setFormData] = useState({
     title: 'Mr.',
     firstName: '',
@@ -739,6 +762,7 @@ const DonateFlow: React.FC = () => {
                     loading={loading}
                     submitDetails={submitDetails}
                     enable80gTaxExemption={enable80gTaxExemption}
+                    enableMonthly={enableMonthly}
                />
            )}
            {step === 2 && (

@@ -26,6 +26,11 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ className = "", default
   const [isOther, setIsOther] = useState(false);
   const [loading, setLoading] = useState(false);
   const [enable80gTaxExemption, setEnable80gTaxExemption] = useState(false);
+  // Defaults to enabled (matches the DB placeholder select's default of
+  // "Enabled") so a misconfigured/unreachable Supabase never silently hides
+  // monthly donations for everyone — it's an explicit admin opt-out via the
+  // Global Config panel, not a fail-closed toggle.
+  const [enableMonthly, setEnableMonthly] = useState(true);
   
   // Dynamic Labels
   const [labels, setLabels] = useState({
@@ -51,14 +56,17 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ className = "", default
               }
 
               // Fetch Tiers & Labels
-              const { data: systemData } = await supabase.from('system_settings').select('*').in('key', ['donation_tiers', 'widget_labels_json', 'enable_80g_tax_exemption']);
-              
+              const { data: systemData } = await supabase.from('system_settings').select('*').in('key', ['donation_tiers', 'widget_labels_json', 'enable_80g_tax_exemption', 'enable_monthly_donations']);
+
               if (systemData) {
                   const tiersJson = systemData.find(d => d.key === 'donation_tiers')?.value;
                   if (tiersJson) { try { setTiers(JSON.parse(tiersJson)); } catch(e) {} }
 
                   const tax = systemData.find(d => d.key === 'enable_80g_tax_exemption')?.value;
                   if (tax) setEnable80gTaxExemption(tax === 'true');
+
+                  const monthlyEnabled = systemData.find(d => d.key === 'enable_monthly_donations')?.value;
+                  if (monthlyEnabled !== undefined) setEnableMonthly(monthlyEnabled === 'true');
 
                   const labelsJson = systemData.find(d => d.key === 'widget_labels_json')?.value;
                   if (labelsJson) { 
@@ -75,6 +83,16 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ className = "", default
       };
       fetchConfig();
   }, []);
+
+  // If monthly gets disabled (or resolves as disabled from the DB) while
+  // "monthly" is the currently selected frequency — e.g. it was the default
+  // before the config fetch resolved — fall back to one-time so the donor
+  // never ends up on an option that's no longer offered.
+  useEffect(() => {
+      if (!enableMonthly && frequency === 'monthly') {
+          setFrequency('once');
+      }
+  }, [enableMonthly]);
 
   const handleAmountClick = (value: number) => {
     setAmount(value);
@@ -113,31 +131,39 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ className = "", default
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* Toggle Switch */}
-        <div className="flex mb-4 bg-brand-light p-1.5 rounded-2xl shadow-skeuo-pressed">
-          <button
-            type="button"
-            onClick={() => setFrequency('monthly')}
-            className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all duration-300 ${
-              frequency === 'monthly' 
-                ? 'bg-brand-blue text-white shadow-lg transform scale-95' 
-                : 'text-gray-500 hover:text-brand-blue'
-            }`}
-          >
-            {labels.monthlyLabel}
-          </button>
-          <button
-            type="button"
-            onClick={() => setFrequency('once')}
-            className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all duration-300 ${
-              frequency === 'once' 
-                ? 'bg-brand-blue text-white shadow-lg transform scale-95' 
-                : 'text-gray-500 hover:text-brand-blue'
-            }`}
-          >
+        {/* Toggle Switch — only worth showing when there's an actual choice to
+            make. When monthly is disabled, one-time is the only option, so a
+            two-way toggle would be misleading UI. */}
+        {enableMonthly ? (
+          <div className="flex mb-4 bg-brand-light p-1.5 rounded-2xl shadow-skeuo-pressed">
+            <button
+              type="button"
+              onClick={() => setFrequency('monthly')}
+              className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all duration-300 ${
+                frequency === 'monthly'
+                  ? 'bg-brand-blue text-white shadow-lg transform scale-95'
+                  : 'text-gray-500 hover:text-brand-blue'
+              }`}
+            >
+              {labels.monthlyLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFrequency('once')}
+              className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all duration-300 ${
+                frequency === 'once'
+                  ? 'bg-brand-blue text-white shadow-lg transform scale-95'
+                  : 'text-gray-500 hover:text-brand-blue'
+              }`}
+            >
+              {labels.onceLabel}
+            </button>
+          </div>
+        ) : (
+          <div className="mb-4 text-center text-sm font-bold text-gray-500 uppercase tracking-widest">
             {labels.onceLabel}
-          </button>
-        </div>
+          </div>
+        )}
 
         {/* Cause Selection - Wing Earmarking */}
         <div className="mb-4 bg-brand-light p-4 rounded-xl shadow-skeuo-pressed border border-white/50">

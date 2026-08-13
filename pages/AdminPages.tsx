@@ -5109,6 +5109,7 @@ const GlobalConfigManager = () => {
     "visitor_baseline_count",
     "visitor_tracker_enabled",
     "enable_80g_tax_exemption",
+    "enable_monthly_donations",
   ];
 
   const PLACEHOLDERS: Record<string, string> = {
@@ -5120,6 +5121,7 @@ const GlobalConfigManager = () => {
     visitor_baseline_count: "e.g., 124830",
     visitor_tracker_enabled: "e.g., true",
     enable_80g_tax_exemption: "e.g., true",
+    enable_monthly_donations: "e.g., true",
   };
 
   useEffect(() => {
@@ -5291,6 +5293,26 @@ const GlobalConfigManager = () => {
                 value={config["enable_80g_tax_exemption"] || "false"}
                 onChange={(e) =>
                   setConfig({ ...config, enable_80g_tax_exemption: e.target.value })
+                }
+                className="w-full border p-2.5 rounded-lg bg-white"
+              >
+                <option value="true">Enabled</option>
+                <option value="false">Disabled</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase">
+                Monthly Donations
+              </label>
+              <p className="text-[10px] text-gray-400 mb-1">
+                Show the "Monthly" recurring option on the donation widget and
+                donate page. When disabled, only one-time donations are offered
+                — existing active subscriptions are unaffected either way.
+              </p>
+              <select
+                value={config["enable_monthly_donations"] || "true"}
+                onChange={(e) =>
+                  setConfig({ ...config, enable_monthly_donations: e.target.value })
                 }
                 className="w-full border p-2.5 rounded-lg bg-white"
               >
