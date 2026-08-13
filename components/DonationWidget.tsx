@@ -115,8 +115,18 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ className = "", default
     }, 500);
   };
 
+  // overflow-hidden was removed from the card wrapper below: the WingSelector
+  // dropdown further down is an absolutely-positioned popover that needs to
+  // extend past this card's own boundaries when the wing list is long enough
+  // to scroll internally (Pillar 4 pushed it past ~400px). With
+  // overflow-hidden on this wrapper, the outer card clipped the dropdown at
+  // its own edge regardless of the dropdown's own scroll position, making
+  // the last couple of wings (e.g. Wing 25) physically unreachable, not just
+  // hidden below a fold. The rounded corners (rounded-3xl) don't actually
+  // need overflow-hidden here — nothing else in this card overflows its
+  // bounds.
   return (
-    <div className={`bg-brand-light p-8 rounded-3xl shadow-skeuo-raised max-w-md w-full relative overflow-hidden border border-white/50 ${className}`}>
+    <div className={`bg-brand-light p-8 rounded-3xl shadow-skeuo-raised max-w-md w-full relative border border-white/50 ${className}`}>
       {/* Decorative metal screw/element */}
       <div className="absolute top-4 right-4 w-3 h-3 rounded-full bg-gray-300 shadow-skeuo-pressed"></div>
       <div className="absolute top-4 left-4 w-3 h-3 rounded-full bg-gray-300 shadow-skeuo-pressed"></div>
