@@ -65,7 +65,10 @@ const DetailsForm: React.FC<DetailsFormProps> = ({
                                 placeholder="Amount"
                             />
                         </div>
-                        {enableMonthly ? (
+                        {/* Same rule as the homepage widget: no toggle and no
+                            standalone "One-time" badge when monthly isn't
+                            offered — there's no choice to label. */}
+                        {enableMonthly && (
                             <div className="flex bg-white/20 p-1 rounded-xl w-fit">
                                 <button
                                     type="button"
@@ -81,10 +84,6 @@ const DetailsForm: React.FC<DetailsFormProps> = ({
                                 >
                                     Monthly
                                 </button>
-                            </div>
-                        ) : (
-                            <div className="bg-white/20 px-4 py-2 rounded-xl w-fit text-sm font-bold text-white">
-                                One-time
                             </div>
                         )}
                     </div>

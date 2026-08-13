@@ -141,10 +141,12 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ className = "", default
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* Toggle Switch — only worth showing when there's an actual choice to
-            make. When monthly is disabled, one-time is the only option, so a
-            two-way toggle would be misleading UI. */}
-        {enableMonthly ? (
+        {/* Toggle Switch — only worth showing at all when there's an actual
+            choice to make. When monthly is disabled, one-time is the only
+            option, so neither a two-way toggle nor a standalone "Give Once"
+            label adds anything — the amount/impact fields below make the
+            one-time nature obvious enough on their own. */}
+        {enableMonthly && (
           <div className="flex mb-4 bg-brand-light p-1.5 rounded-2xl shadow-skeuo-pressed">
             <button
               type="button"
@@ -168,10 +170,6 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ className = "", default
             >
               {labels.onceLabel}
             </button>
-          </div>
-        ) : (
-          <div className="mb-4 text-center text-sm font-bold text-gray-500 uppercase tracking-widest">
-            {labels.onceLabel}
           </div>
         )}
 
