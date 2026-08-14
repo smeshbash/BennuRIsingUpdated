@@ -22,7 +22,7 @@
     "pdfkit": "^0.19.1",
     "razorpay": "^2.9.8",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react-dom": "^19.2.8",
     "react-helmet-async": "^2.0.5",
     "react-router-dom": "^7.9.6",
     "resend": "^6.20.0"
@@ -33,7 +33,7 @@
     "@types/node": "^22.14.0",
     "@types/pdfkit": "^0.17.6",
     "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
+    "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^5.0.0",
     "esbuild": "^0.28.1",
     "tsx": "^4.23.11",
