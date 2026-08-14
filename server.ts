@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Resend } from 'resend';
 
 dotenv.config();
 
@@ -50,6 +51,86 @@ async function startServer() {
         });
     }
     return supabaseAdmin;
+  }
+
+  // Resend client — sends the donation receipt email after a payment is
+  // verified by the webhook below. Optional: if RESEND_API_KEY isn't set,
+  // receipts are simply skipped (donations still record fine either way).
+  let resend: Resend | null = null;
+  const getResend = (): Resend | null => {
+    if (!resend) {
+        const apiKey = process.env.RESEND_API_KEY;
+        if (!apiKey) return null;
+        resend = new Resend(apiKey);
+    }
+    return resend;
+  }
+
+  // Sends the donor a branded receipt email. Failures here are logged but
+  // never thrown — a flaky email provider should never cause the webhook to
+  // return a non-2xx (which would make Razorpay retry the whole donation
+  // write pointlessly) or block the donor-facing checkout flow in any way.
+  const sendDonationReceipt = async (donation: {
+    donor_name: string | null;
+    donor_email: string | null;
+    amount: number;
+    fund_id: string | null;
+    payment_id: string;
+    frequency: string;
+    pan_number: string | null;
+  }) => {
+    try {
+      const resendClient = getResend();
+      if (!resendClient) {
+          console.log("[Receipt] RESEND_API_KEY not set — skipping receipt email");
+          return;
+      }
+      if (!donation.donor_email) {
+          console.log("[Receipt] No donor email on this donation — skipping receipt email");
+          return;
+      }
+
+      // Best-effort friendly fund/wing name — falls back to the raw id if
+      // there's no match (e.g. Supabase admin client unavailable, or the
+      // fund/wing was renamed or removed since this donation was made).
+      let fundName = donation.fund_id || 'General Fund (Where Needed Most)';
+      const admin = getSupabaseAdmin();
+      if (admin && donation.fund_id) {
+          const { data } = await admin.from('donation_funds').select('name').eq('id', donation.fund_id).maybeSingle();
+          if (data?.name) fundName = data.name;
+      }
+
+      const fromAddress = process.env.RECEIPT_FROM_EMAIL || 'onboarding@resend.dev';
+      const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      const frequencyLabel = donation.frequency === 'monthly' ? 'Monthly Donation (First Installment)' : 'One-Time Donation';
+      const taxNote = donation.pan_number
+          ? `<p style="color:#4b5563;font-size:13px;">This donation is eligible for tax exemption under Section 80G. Your PAN on file: <strong>${donation.pan_number}</strong>. A formal 80G certificate will follow separately.</p>`
+          : '';
+
+      await resendClient.emails.send({
+          from: `Bennu Rising International Foundation <${fromAddress}>`,
+          to: donation.donor_email,
+          subject: `Your donation receipt — ₹${donation.amount}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1f2937;">
+              <h2 style="color:#003F7F;">Thank you, ${donation.donor_name || 'friend'}!</h2>
+              <p>Your generosity brings healing and hope. Here's your donation receipt:</p>
+              <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+                <tr><td style="padding:8px 0;color:#6b7280;">Amount</td><td style="padding:8px 0;text-align:right;font-weight:bold;">₹${donation.amount}</td></tr>
+                <tr><td style="padding:8px 0;color:#6b7280;">Type</td><td style="padding:8px 0;text-align:right;">${frequencyLabel}</td></tr>
+                <tr><td style="padding:8px 0;color:#6b7280;">Allocated to</td><td style="padding:8px 0;text-align:right;">${fundName}</td></tr>
+                <tr><td style="padding:8px 0;color:#6b7280;">Date</td><td style="padding:8px 0;text-align:right;">${dateStr}</td></tr>
+                <tr><td style="padding:8px 0;color:#6b7280;">Reference ID</td><td style="padding:8px 0;text-align:right;font-family:monospace;font-size:12px;">${donation.payment_id}</td></tr>
+              </table>
+              ${taxNote}
+              <p style="color:#6b7280;font-size:13px;margin-top:24px;">Bennu Rising International Foundation<br/>10/62, Odakkal Sreepatham, Eruva East PO, Kayamkulam, Muthukulam, Karthikappally, Alappuzha, Kerala, India - 690506</p>
+            </div>
+          `,
+      });
+      console.log(`[Receipt] Sent donation receipt to ${donation.donor_email} for payment ${donation.payment_id}`);
+    } catch (err: any) {
+      console.error("[Receipt] Failed to send donation receipt email:", err);
+    }
   }
 
   // --- Razorpay Webhook ---
@@ -124,6 +205,18 @@ async function startServer() {
                 if (!Number.isNaN(parsed)) donationRecord.volunteer_id = parsed;
             }
 
+            // Checked BEFORE the upsert below so we know whether this is the
+            // first time we're seeing this payment_id — the receipt email
+            // should only go out once, but Razorpay retries this webhook on
+            // any non-2xx/timeout, and upsert alone can't tell us "was this
+            // an insert or just a repeat update" after the fact.
+            const { data: existingDonation } = await admin
+                .from('donations')
+                .select('payment_id')
+                .eq('payment_id', payment.id)
+                .maybeSingle();
+            const isFirstTimeRecording = !existingDonation;
+
             // Upsert keyed on payment_id so Razorpay's automatic webhook retries
             // (it retries on any non-2xx or timeout) never create duplicate rows.
             // Requires a unique constraint on donations.payment_id — see
@@ -139,6 +232,18 @@ async function startServer() {
             }
 
             console.log(`[Webhook] Recorded verified donation for payment ${payment.id}`);
+
+            if (isFirstTimeRecording) {
+                await sendDonationReceipt({
+                    donor_name: donationRecord.donor_name,
+                    donor_email: donationRecord.donor_email,
+                    amount: donationRecord.amount,
+                    fund_id: donationRecord.fund_id,
+                    payment_id: donationRecord.payment_id,
+                    frequency: donationRecord.frequency,
+                    pan_number: donationRecord.pan_number,
+                });
+            }
         } else if (payload.event === 'payment.failed') {
             const payment = payload.payload?.payment?.entity;
             console.warn(`[Webhook] Payment failed: ${payment?.id}`, payment?.error_description);
