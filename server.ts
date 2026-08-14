@@ -1,11 +1,13 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import PDFDocument from 'pdfkit';
 
 dotenv.config();
 
@@ -66,6 +68,159 @@ async function startServer() {
     return resend;
   }
 
+  // Logo lives at dist/logo1.png in production (Vite copies public/ into the
+  // build output root) but only at public/logo1.png in local dev (no dist/
+  // until you actually run a build). Tries both, falls back to no logo
+  // rather than failing the whole receipt if neither is found.
+  const getLogoPath = (): string | null => {
+    const distLogo = path.join(process.cwd(), 'dist', 'logo1.png');
+    const publicLogo = path.join(process.cwd(), 'public', 'logo1.png');
+    if (fs.existsSync(distLogo)) return distLogo;
+    if (fs.existsSync(publicLogo)) return publicLogo;
+    return null;
+  }
+
+  // Brand palette — mirrors the Tailwind config in index.html.
+  const BRAND = {
+    blue: '#003F7F',
+    red: '#D9381E',
+    green: '#4CAF50',
+    dark: '#1F2937',
+    gray: '#6b7280',
+    lightGray: '#9ca3af',
+    border: '#E5E7EB',
+    panel: '#F4F6F9',
+  };
+
+  // Renders a one-page PDF payment receipt as a Buffer. Plain payment
+  // confirmation only — no 80G/tax-exemption claims, since that requires
+  // registration details (80G number, trust PAN, Form 10BD/10BE filing
+  // status) this app doesn't have and shouldn't assert on its own.
+  const generateReceiptPdf = (donation: {
+    donor_name: string | null;
+    amount: number;
+    fundName: string;
+    payment_id: string;
+    frequencyLabel: string;
+    dateStr: string;
+  }): Promise<Buffer> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ size: 'A4', margin: 0 });
+        const chunks: Buffer[] = [];
+        doc.on('data', (chunk) => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        const pageW = doc.page.width; // 595.28
+        const left = 50;
+        const right = pageW - 50;
+        const contentW = right - left;
+
+        // Outer frame — gives the page a "certificate" edge rather than
+        // content just floating on blank white.
+        doc.rect(20, 20, pageW - 40, doc.page.height - 40).lineWidth(1).strokeColor(BRAND.border).stroke();
+
+        // --- Header: logo left, receipt meta right ---
+        const logoPath = getLogoPath();
+        if (logoPath) {
+          doc.image(logoPath, left, 42, { height: 54 });
+        } else {
+          doc.fontSize(16).font('Helvetica-Bold').fillColor(BRAND.blue).text('Bennu Rising International Foundation', left, 55);
+        }
+        doc.fontSize(9).font('Helvetica-Bold').fillColor(BRAND.lightGray)
+          .text('PAYMENT RECEIPT', left, 46, { width: contentW, align: 'right', characterSpacing: 1 });
+        doc.fontSize(9).font('Helvetica').fillColor(BRAND.lightGray)
+          .text(donation.payment_id, left, 60, { width: contentW, align: 'right' });
+        doc.fontSize(9).font('Helvetica').fillColor(BRAND.lightGray)
+          .text(donation.dateStr, left, 74, { width: contentW, align: 'right' });
+
+        // Two-tone accent rule under the header
+        doc.rect(left, 112, contentW, 3).fill(BRAND.blue);
+        doc.rect(left, 115, contentW, 1.5).fill(BRAND.green);
+
+        // --- Hero: thank-you + big amount + paid badge ---
+        doc.fontSize(20).font('Helvetica-Bold').fillColor(BRAND.dark)
+          .text('Thank you for your generosity!', left, 150, { width: contentW, align: 'center' });
+        doc.fontSize(10).font('Helvetica').fillColor(BRAND.gray)
+          .text('Your contribution helps bring healing and hope to those who need it most.', left, 176, { width: contentW, align: 'center' });
+
+        doc.fontSize(38).font('Helvetica-Bold').fillColor(BRAND.blue)
+          .text(`Rs. ${donation.amount}`, left, 205, { width: contentW, align: 'center' });
+
+        // Note: no ✓ Unicode glyph here — PDFKit's built-in Helvetica font
+        // doesn't include it and renders garbage instead. Drawing an actual
+        // checkmark as vector strokes instead, so it always renders cleanly.
+        const badgeW = 92, badgeH = 24;
+        const badgeX = left + (contentW - badgeW) / 2;
+        const badgeY = 258;
+        doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 12).fill(BRAND.green);
+
+        const checkCx = badgeX + 22;
+        const checkCy = badgeY + badgeH / 2;
+        doc.save();
+        doc.moveTo(checkCx - 5, checkCy)
+          .lineTo(checkCx - 1.5, checkCy + 4)
+          .lineTo(checkCx + 6, checkCy - 5)
+          .lineWidth(1.8)
+          .strokeColor('#ffffff')
+          .lineJoin('round')
+          .lineCap('round')
+          .stroke();
+        doc.restore();
+
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#ffffff')
+          .text('PAID', badgeX + 34, badgeY + 7, { width: badgeW - 44, align: 'left' });
+
+        // --- Details panel ---
+        const panelY = 310;
+        const panelH = 190;
+        doc.roundedRect(left, panelY, contentW, panelH, 8).fill(BRAND.panel);
+        doc.roundedRect(left, panelY, contentW, panelH, 8).lineWidth(1).strokeColor(BRAND.border).stroke();
+
+        doc.fontSize(9).font('Helvetica-Bold').fillColor(BRAND.lightGray)
+          .text('DONATION DETAILS', left + 24, panelY + 20, { characterSpacing: 1 });
+        doc.moveTo(left + 24, panelY + 36).lineTo(right - 24, panelY + 36).lineWidth(0.5).strokeColor(BRAND.border).stroke();
+
+        const rows: [string, string][] = [
+          ['Receipt For', donation.donor_name || 'Donor'],
+          ['Amount', `Rs. ${donation.amount}`],
+          ['Type', donation.frequencyLabel],
+          ['Allocated To', donation.fundName],
+          ['Date', donation.dateStr],
+          ['Payment Reference', donation.payment_id],
+        ];
+        let rowY = panelY + 48;
+        for (const [label, value] of rows) {
+          doc.fontSize(10.5).font('Helvetica').fillColor(BRAND.gray).text(label, left + 24, rowY);
+          doc.fontSize(10.5).font('Helvetica-Bold').fillColor(BRAND.dark)
+            .text(value, left + 24, rowY, { width: contentW - 48, align: 'right' });
+          rowY += 23;
+        }
+
+        // --- Footer ---
+        const footerY = panelY + panelH + 30;
+        doc.moveTo(left, footerY).lineTo(right, footerY).lineWidth(0.5).strokeColor(BRAND.border).stroke();
+        doc.fontSize(10).font('Helvetica-Bold').fillColor(BRAND.dark)
+          .text('Bennu Rising International Foundation', left, footerY + 14, { width: contentW, align: 'center' });
+        doc.fontSize(8.5).font('Helvetica').fillColor(BRAND.gray)
+          .text('10/62, Odakkal Sreepatham, Eruva East PO, Kayamkulam, Muthukulam, Karthikappally, Alappuzha, Kerala, India - 690506', left, footerY + 30, { width: contentW, align: 'center' });
+        doc.fontSize(8.5).font('Helvetica').fillColor(BRAND.blue)
+          .text('bennurisinginternational.org', left, footerY + 44, { width: contentW, align: 'center' });
+
+        doc.fontSize(8).font('Helvetica-Oblique').fillColor(BRAND.lightGray)
+          .text(
+            'This is a computer-generated payment receipt confirming a donation received via Razorpay. It does not constitute a tax-exemption certificate.',
+            left + 20, footerY + 66, { width: contentW - 40, align: 'center' }
+          );
+
+        doc.end();
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
   // Sends the donor a branded receipt email. Failures here are logged but
   // never thrown — a flaky email provider should never cause the webhook to
   // return a non-2xx (which would make Razorpay retry the whole donation
@@ -103,9 +258,15 @@ async function startServer() {
       const fromAddress = process.env.RECEIPT_FROM_EMAIL || 'onboarding@resend.dev';
       const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
       const frequencyLabel = donation.frequency === 'monthly' ? 'Monthly Donation (First Installment)' : 'One-Time Donation';
-      const taxNote = donation.pan_number
-          ? `<p style="color:#4b5563;font-size:13px;">This donation is eligible for tax exemption under Section 80G. Your PAN on file: <strong>${donation.pan_number}</strong>. A formal 80G certificate will follow separately.</p>`
-          : '';
+
+      const pdfBuffer = await generateReceiptPdf({
+          donor_name: donation.donor_name,
+          amount: donation.amount,
+          fundName,
+          payment_id: donation.payment_id,
+          frequencyLabel,
+          dateStr,
+      });
 
       await resendClient.emails.send({
           from: `Bennu Rising International Foundation <${fromAddress}>`,
@@ -114,7 +275,7 @@ async function startServer() {
           html: `
             <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1f2937;">
               <h2 style="color:#003F7F;">Thank you, ${donation.donor_name || 'friend'}!</h2>
-              <p>Your generosity brings healing and hope. Here's your donation receipt:</p>
+              <p>Your generosity brings healing and hope. Here's your donation receipt — a PDF copy is attached too.</p>
               <table style="width:100%;border-collapse:collapse;margin:20px 0;">
                 <tr><td style="padding:8px 0;color:#6b7280;">Amount</td><td style="padding:8px 0;text-align:right;font-weight:bold;">₹${donation.amount}</td></tr>
                 <tr><td style="padding:8px 0;color:#6b7280;">Type</td><td style="padding:8px 0;text-align:right;">${frequencyLabel}</td></tr>
@@ -122,12 +283,17 @@ async function startServer() {
                 <tr><td style="padding:8px 0;color:#6b7280;">Date</td><td style="padding:8px 0;text-align:right;">${dateStr}</td></tr>
                 <tr><td style="padding:8px 0;color:#6b7280;">Reference ID</td><td style="padding:8px 0;text-align:right;font-family:monospace;font-size:12px;">${donation.payment_id}</td></tr>
               </table>
-              ${taxNote}
               <p style="color:#6b7280;font-size:13px;margin-top:24px;">Bennu Rising International Foundation<br/>10/62, Odakkal Sreepatham, Eruva East PO, Kayamkulam, Muthukulam, Karthikappally, Alappuzha, Kerala, India - 690506</p>
             </div>
           `,
+          attachments: [
+              {
+                  filename: `receipt-${donation.payment_id}.pdf`,
+                  content: pdfBuffer,
+              },
+          ],
       });
-      console.log(`[Receipt] Sent donation receipt to ${donation.donor_email} for payment ${donation.payment_id}`);
+      console.log(`[Receipt] Sent donation receipt (with PDF) to ${donation.donor_email} for payment ${donation.payment_id}`);
     } catch (err: any) {
       console.error("[Receipt] Failed to send donation receipt email:", err);
     }
