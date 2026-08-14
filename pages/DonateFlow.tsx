@@ -5,6 +5,7 @@ import { DONATION_FUNDS, RAZORPAY_KEY_ID, WINGS_PILLARS } from '../constants';
 import { WingSelector, getWingLabel } from "../components/WingSelector";
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { DonationFund } from '../types';
+import SEO from '../components/SEO';
 
 declare global {
   interface Window {
@@ -711,6 +712,10 @@ const DonateFlow: React.FC = () => {
   
   return (
     <div className="min-h-screen bg-brand-light py-16">
+      <SEO
+        title="Donate | Bennu Rising International Foundation"
+        description="Donate to Bennu Rising International Foundation and support mental health, addiction rehabilitation, tribal education, disaster relief, and welfare for armed forces families across India."
+      />
       <div className="container mx-auto px-4">
         {paymentError && (
           <div className="max-w-4xl mx-auto mb-6 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-sm">

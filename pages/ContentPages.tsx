@@ -8,6 +8,7 @@ import { Album, BlogPost, ImpactStory, MissionGroup, MissionCause } from '../typ
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import * as LucideIcons from 'lucide-react';
+import SEO from '../components/SEO';
 
 // Reusable Modal Component
 const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title?: string; children: React.ReactNode }> = ({ isOpen, onClose, title, children }) => {
@@ -37,10 +38,20 @@ interface PageLayoutProps {
   theme?: 'blue' | 'beige' | 'white';
   heroImage?: string;
   heroOverlay?: number;
+  // Optional overrides for the <title>/meta description Google sees — falls
+  // back to the visible hero title/subtitle when not given, so every page
+  // gets at least a unique, real <title> instead of the one generic title
+  // every route used to share.
+  seoTitle?: string;
+  seoDescription?: string;
 }
 
-const PageLayout: React.FC<PageLayoutProps> = ({ title, subtitle, children, theme = 'white', heroImage, heroOverlay = 60 }) => (
+const PageLayout: React.FC<PageLayoutProps> = ({ title, subtitle, children, theme = 'white', heroImage, heroOverlay = 60, seoTitle, seoDescription }) => (
   <div className={`min-h-screen ${theme === 'beige' ? 'bg-[#EFEBE0]' : 'bg-brand-light'}`}>
+    <SEO
+      title={`${seoTitle || title} | Bennu Rising International Foundation`}
+      description={seoDescription || subtitle}
+    />
     {/* Hero Section */}
     <div className="relative w-full">
         <div className="pt-32 pb-12 px-4 text-center max-w-4xl mx-auto animate-fade-in-up">
@@ -76,6 +87,7 @@ const useLegalContent = (key: string, defaultContent: string) => {
 
 const LegalLayout = ({ title, date, children }: { title: string, date: string, children?: React.ReactNode }) => (
     <div className="min-h-screen bg-brand-light pt-32 pb-20 px-4">
+        <SEO title={`${title} | Bennu Rising International Foundation`} />
         <div className="max-w-4xl mx-auto bg-white p-12 rounded-[2.5rem] shadow-skeuo-raised border border-white">
             <h1 className="text-4xl font-serif-heading font-bold text-brand-blue mb-4">{title}</h1>
             <p className="text-gray-500 text-sm font-bold uppercase tracking-wider mb-12">Last Updated: {date}</p>
@@ -412,10 +424,11 @@ export const AboutPage: React.FC = () => {
   }, []);
 
   return (
-  <PageLayout 
-    title={config.heroTitle} 
+  <PageLayout
+    title={config.heroTitle}
     subtitle={config.heroSubtitle}
     heroImage={config.heroImage}
+    seoDescription="Learn about Bennu Rising International Foundation, an NGO working across India on mental health, addiction rehabilitation, tribal education, disaster relief, and welfare for armed forces families."
   >
     <div id="our-story" className="mb-24 scroll-mt-24 text-gray-700 text-lg leading-relaxed font-medium">
       <h3 className="text-3xl font-bold text-brand-blue font-serif-heading drop-shadow-sm mb-6">{config.storyTitle}</h3>
@@ -737,10 +750,11 @@ export const WorkPage: React.FC = () => {
   };
 
   return (
-  <PageLayout 
-    title={config.heroTitle} 
+  <PageLayout
+    title={config.heroTitle}
     subtitle={config.heroSubtitle}
     heroImage={config.heroImage}
+    seoDescription="Explore the programs run by Bennu Rising International Foundation: addiction rehabilitation, mental health support, tribal education, disaster relief, and welfare for veterans and their families."
   >
     {/* 1. Lifecycle of Transformation */}
     <div className="mb-32 pt-8">
@@ -931,10 +945,11 @@ export const ImpactPage: React.FC = () => {
     }
 
     return (
-        <PageLayout 
-            title={config.heroTitle} 
+        <PageLayout
+            title={config.heroTitle}
             subtitle={config.heroSubtitle}
             heroImage={config.heroImage}
+            seoDescription="See the measurable impact of Bennu Rising International Foundation's work across India — lives touched, students educated, patients rehabilitated, and soldiers' families supported."
         >
             <div id="statistics" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-20 relative scroll-mt-24">
                 {stats.map((stat, idx) => (
@@ -1014,11 +1029,12 @@ export const BlogPage: React.FC = () => {
 
     if (readingPost) {
         return (
-            <PageLayout 
-                title={readingPost.title} 
+            <PageLayout
+                title={readingPost.title}
                 subtitle={`By ${readingPost.author} • ${readingPost.date}`}
                 heroImage={readingPost.image}
                 heroOverlay={40}
+                seoDescription={readingPost.excerpt}
             >
                 <div className="max-w-4xl mx-auto mt-8 relative z-10">
                     <button onClick={() => setReadingPost(null)} className="mb-8 flex items-center text-sm font-bold text-gray-500 hover:text-brand-blue transition bg-white/80 backdrop-blur px-4 py-2 rounded-full shadow-sm w-fit">
@@ -1051,7 +1067,7 @@ export const BlogPage: React.FC = () => {
     const others = filteredPosts.slice(1);
 
     return (
-        <PageLayout title={config.title} subtitle={config.subtitle}>
+        <PageLayout title={config.title} subtitle={config.subtitle} seoDescription="Stories, field updates, and insights from Bennu Rising International Foundation's work in mental health, education, rehabilitation, and disaster relief across India.">
             <div className="flex flex-col md:flex-row justify-between items-center mb-12 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 sticky top-24 z-30">
                  <div className="flex space-x-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto no-scrollbar">
                      {['All', ...Array.from(new Set(posts.map(post => post.category).filter(Boolean)))].map(cat => (
@@ -1261,7 +1277,7 @@ export const VolunteerSignupPage: React.FC = () => {
         );
     }
     return (
-        <PageLayout title={config.heroTitle} subtitle={config.heroSubtitle} heroImage={config.heroImage}>
+        <PageLayout title={config.heroTitle} subtitle={config.heroSubtitle} heroImage={config.heroImage} seoDescription="Sign up to volunteer with Bennu Rising International Foundation. Join our community supporting mental health, education, rehabilitation, and disaster relief programs across India.">
             <div className="grid md:grid-cols-2 gap-16 items-start">
                 <div className="space-y-8 animate-fade-in">
                     <div className="bg-brand-blue text-white p-10 rounded-[2.5rem] shadow-xl relative overflow-hidden flex flex-col h-full justify-center">
@@ -1484,10 +1500,11 @@ export const VolunteerPage: React.FC = () => {
     }, []);
 
     return (
-    <PageLayout 
-        title={config.heroTitle} 
+    <PageLayout
+        title={config.heroTitle}
         subtitle={config.heroSubtitle}
         heroImage={config.heroImage}
+        seoDescription="Volunteer with Bennu Rising International Foundation and make a real difference in mental health, education, disaster relief, and community welfare programs across India."
     >
         <div id="why-volunteer" className="grid md:grid-cols-3 gap-8 mb-24 relative z-30 scroll-mt-24">
             {config.reasons.map((item, idx) => (
@@ -1604,7 +1621,7 @@ export const GalleryPage: React.FC = () => {
     }, []);
 
     return (
-        <PageLayout title={config.title} subtitle={config.subtitle}>
+        <PageLayout title={config.title} subtitle={config.subtitle} seoDescription="Photos from Bennu Rising International Foundation's programs across India — health and healing, social empowerment, tribal education, disaster relief, and our volunteer community.">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                 {albums.map((album) => (
                     <div key={album.id} onClick={() => setActiveAlbum(album)} className="group cursor-pointer bg-brand-light p-4 rounded-3xl shadow-skeuo-raised hover:shadow-2xl transition-all duration-300 border border-white relative">
@@ -1640,7 +1657,7 @@ export const GalleryPage: React.FC = () => {
 
 export const InternshipPage: React.FC = () => {
     return (
-        <PageLayout title="Internship Program" subtitle="Launch your career with purpose." heroImage="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2000&auto=format&fit=crop">
+        <PageLayout title="Internship Program" subtitle="Launch your career with purpose." heroImage="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2000&auto=format&fit=crop" seoDescription="Apply for an internship with Bennu Rising International Foundation. Gain hands-on nonprofit experience in mental health, education, rehabilitation, and community development across India.">
             <div className="max-w-5xl mx-auto py-16 px-4">
                 <div id="overview" className="text-center mb-16 scroll-mt-24">
                     <h2 className="text-3xl font-bold text-brand-blue mb-4">Why Intern With Us?</h2>
@@ -1768,7 +1785,7 @@ export const InternshipSignupPage: React.FC = () => {
     }
 
     return (
-        <PageLayout title="Internship Application" subtitle="Take the first step towards a meaningful career." theme="beige">
+        <PageLayout title="Internship Application" subtitle="Take the first step towards a meaningful career." theme="beige" seoDescription="Apply for an internship with Bennu Rising International Foundation and gain hands-on nonprofit experience across mental health, education, and community development programs in India.">
             <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 mb-20">
                 <div className="bg-gray-900 p-8 text-white text-center">
                     <h2 className="text-2xl font-bold mb-2">Internship Application Form</h2>
@@ -1966,10 +1983,11 @@ export const PartnersPage: React.FC = () => {
     };
 
     return (
-        <PageLayout 
-            title={config.heroTitle} 
+        <PageLayout
+            title={config.heroTitle}
             subtitle={config.heroSubtitle}
             heroImage={config.heroImage}
+            seoDescription="Partner with Bennu Rising International Foundation. Explore corporate CSR partnerships and collaboration opportunities supporting mental health, education, and disaster relief in India."
         >
             
             {partners.length > 0 && (

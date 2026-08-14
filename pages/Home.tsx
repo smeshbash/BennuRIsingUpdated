@@ -8,6 +8,7 @@ import { CirclePlay, ArrowRight, Quote, Heart, Users, Globe, Leaf, Shield, Circl
 import { useNavigate } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import * as LucideIcons from 'lucide-react';
+import SEO from '../components/SEO';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -178,6 +179,21 @@ const Home: React.FC = () => {
 
   return (
     <div className="bg-brand-light overflow-x-hidden">
+      <SEO
+        title="Bennu Rising International Foundation | NGO for Mental Health, Education & Disaster Relief in India"
+        description="Bennu Rising International Foundation is an NGO working across India on mental health, addiction rehabilitation, tribal education, disaster relief, and welfare for armed forces families. Donate, volunteer, or partner with us."
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "NGO",
+          "name": "Bennu Rising International Foundation",
+          "alternateName": "Bennu Rising",
+          "url": window.location.origin,
+          "logo": `${window.location.origin}/logo1.png`,
+          "description": "Bennu Rising International Foundation is a non-profit dedicated to holistic healing, education, and social empowerment across India — covering mental health, addiction rehabilitation, tribal education, disaster relief, and welfare for armed forces families.",
+          "slogan": "Lokah Samastha Sukhino Bhavantu",
+          "areaServed": "India",
+        }}
+      />
       {/* Video Modal */}
       {showVideoModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-fade-in">

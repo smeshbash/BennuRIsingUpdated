@@ -3,8 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bennu Rising International Foundation | Lokah Samastha Sukhino Bhavantu</title>
+    <title>Bennu Rising International Foundation | NGO for Mental Health, Education & Disaster Relief in India</title>
+    <meta name="description" content="Bennu Rising International Foundation is an NGO working across India on mental health, addiction rehabilitation, tribal education, disaster relief, and welfare for armed forces families. Donate, volunteer, or partner with us." />
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <!--
+      These base Open Graph/Twitter tags are a fallback for crawlers that don't
+      execute JavaScript (WhatsApp, Facebook, Twitter/X link previews, etc).
+      Each page also sets its own more specific tags via the <SEO> component
+      (react-helmet-async), which JS-executing crawlers like Googlebot pick up
+      instead — but non-JS scrapers will only ever see what's below.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Bennu Rising International Foundation" />
+    <meta property="og:title" content="Bennu Rising International Foundation | Heal. Empower. Rise." />
+    <meta property="og:description" content="An NGO working across India on mental health, addiction rehabilitation, tribal education, disaster relief, and welfare for armed forces families." />
+    <meta property="og:image" content="https://bennurisinginternational.org/logo1.png" />
+    <meta property="og:url" content="https://bennurisinginternational.org/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Bennu Rising International Foundation | Heal. Empower. Rise." />
+    <meta name="twitter:description" content="An NGO working across India on mental health, addiction rehabilitation, tribal education, disaster relief, and welfare for armed forces families." />
+    <meta name="twitter:image" content="https://bennurisinginternational.org/logo1.png" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
@@ -102,6 +120,25 @@
         border: 1px solid rgba(255, 255, 255, 0.6);
       }
     </style>
+  <script>
+    // Backward-compatibility redirect for links shared before the site
+    // switched from HashRouter (#/donate?vid=8) to clean URLs (/donate?vid=8).
+    // Anyone who already has an old-style link saved/shared (personalized
+    // fundraising links in particular) would otherwise silently land on the
+    // homepage with no error and no vid= tracking. This runs before React
+    // loads, as a plain synchronous script, so it fires on the very first
+    // paint regardless of anything else on the page.
+    //
+    // Only triggers on "#/..." (an old full-route hash) — never touches
+    // in-page anchor links like "#objectives" or Supabase's own
+    // "#access_token=..." auth-callback hash, neither of which start with "/".
+    (function () {
+      if (window.location.hash.indexOf('#/') === 0) {
+        var legacyPath = window.location.hash.slice(1); // "/donate?vid=8"
+        window.location.replace(window.location.origin + legacyPath);
+      }
+    })();
+  </script>
   <script type="importmap">
 {
   "imports": {

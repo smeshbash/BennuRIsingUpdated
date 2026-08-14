@@ -33,7 +33,10 @@ export const AuthProvider = ({ children }: { children?: ReactNode }) => {
     if (isSimulationMode) {
        setIsLoading(false);
     } else {
-       // Manual Hash Parsing for HashRouter compatibility
+       // Manual parsing of the #access_token=... fragment Supabase appends to
+       // redirect URLs after email confirmation / password recovery / invite links.
+       // This is independent of app routing (BrowserRouter) — Supabase always
+       // delivers these tokens via a URL hash fragment, not a query param.
        const handleHashSession = async () => {
           const hash = window.location.hash;
           if (hash.includes('access_token=') && (hash.includes('type=recovery') || hash.includes('type=signup') || hash.includes('type=invite'))) {
@@ -147,7 +150,7 @@ export const AuthProvider = ({ children }: { children?: ReactNode }) => {
   const resetPassword = async (email: string) => {
     if (isSimulationMode) return { error: 'Simulation mode disabled' };
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/#/admin/dashboard`,
+      redirectTo: `${window.location.origin}/admin/dashboard`,
     });
     return { error: error?.message || null };
   };

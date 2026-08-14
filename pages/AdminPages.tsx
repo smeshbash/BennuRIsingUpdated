@@ -872,7 +872,7 @@ const AdminUsersManager = () => {
         email: newEmail.toLowerCase(),
         password: tempPassword,
         options: { 
-          emailRedirectTo: window.location.origin + "/#/admin/dashboard?send_reset=true",
+          emailRedirectTo: window.location.origin + "/admin/dashboard?send_reset=true",
         }
       });
 
@@ -884,7 +884,7 @@ const AdminUsersManager = () => {
            // If user exists, send password reset link
            const { error: resetError } = await supabase.auth.resetPasswordForEmail(
               newEmail.toLowerCase(),
-              { redirectTo: window.location.origin + "/#/admin/dashboard" }
+              { redirectTo: window.location.origin + "/admin/dashboard" }
            );
            if (resetError) {
               msg = `User ${newEmail} pre-authorized, but failed sending reset link: ${resetError.message}`;
@@ -2093,7 +2093,7 @@ const VolunteersManager = () => {
                       </span>
                       <button
                         onClick={() => {
-                          const link = `${window.location.origin}/#/donate?vid=${v.id}`;
+                          const link = `${window.location.origin}/donate?vid=${v.id}`;
                           navigator.clipboard.writeText(link);
                           customAlert("Personalized link copied to clipboard!");
                         }}
@@ -6130,7 +6130,7 @@ export const AdminDashboard: React.FC = () => {
       window.history.replaceState(null, "", cleanUrl);
 
       supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: window.location.origin + "/#/admin/dashboard",
+        redirectTo: window.location.origin + "/admin/dashboard",
       }).then(({ error }) => {
         if (!error) {
           setTimeout(() => {

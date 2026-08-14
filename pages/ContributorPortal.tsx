@@ -780,12 +780,12 @@ export const ContributorPortal: React.FC<{ portalType?: 'internship' | 'voluntee
                                     <div className="flex items-center gap-2">
                                         <input
                                             readOnly
-                                            value={`${window.location.origin}/#/donate?vid=${application.id}`}
+                                            value={`${window.location.origin}/donate?vid=${application.id}`}
                                             className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono text-gray-600"
                                         />
                                         <button
                                             onClick={() => {
-                                                navigator.clipboard.writeText(`${window.location.origin}/#/donate?vid=${application.id}`);
+                                                navigator.clipboard.writeText(`${window.location.origin}/donate?vid=${application.id}`);
                                                 alert("Link copied to clipboard!");
                                             }}
                                             className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold transition-colors"

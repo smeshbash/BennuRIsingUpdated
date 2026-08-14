@@ -1,6 +1,7 @@
 
 import React, { useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import AnnouncementBar from './components/AnnouncementBar';
@@ -30,22 +31,10 @@ const ScrollToTop = () => {
     } else {
       window.scrollTo(0, 0);
     }
-    
-    // Dynamic Title Update for SEO
-    let title = "Bennu Rising International Foundation";
-    switch(pathname) {
-      case '/about': title = "About Us | Bennu Rising International Foundation"; break;
-      case '/work': title = "Our Work | Bennu Rising International Foundation"; break;
-      case '/impact': title = "Impact Report | Bennu Rising International Foundation"; break;
-      case '/donate': title = "Donate Now | Bennu Rising International Foundation"; break;
-      case '/volunteer': title = "Volunteer | Bennu Rising International Foundation"; break;
-      case '/internship': title = "Internship | Bennu Rising International Foundation"; break;
-      case '/blog': title = "Stories & Blog | Bennu Rising International Foundation"; break;
-      case '/partners': title = "Partnerships | Bennu Rising International Foundation"; break;
-      default: title = "Bennu Rising International Foundation | Lokah Samastha Sukhino Bhavantu";
-    }
-    document.title = title;
-
+    // Per-page <title>/meta description are now handled by the <SEO> component
+    // on each page (via react-helmet-async) instead of the switch statement
+    // that used to live here — that only covered a handful of routes and
+    // couldn't set descriptions/canonical/OG tags at all.
   }, [pathname, hash]);
   return null;
 };
@@ -119,12 +108,14 @@ const App = () => {
 
 const AppWrapper = () => (
   <ErrorBoundary>
-    <AuthProvider>
-      <Router>
-        <ScrollToTop />
-        <App />
-      </Router>
-    </AuthProvider>
+    <HelmetProvider>
+      <AuthProvider>
+        <Router>
+          <ScrollToTop />
+          <App />
+        </Router>
+      </AuthProvider>
+    </HelmetProvider>
   </ErrorBoundary>
 );
 
