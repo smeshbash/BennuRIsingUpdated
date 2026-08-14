@@ -11,7 +11,7 @@
     "start": "node dist/server.cjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.84.0",
+    "@supabase/supabase-js": "^2.112.2",
     "@types/dompurify": "^3.0.5",
     "cors": "^2.8.6",
     "dompurify": "^3.3.3",
