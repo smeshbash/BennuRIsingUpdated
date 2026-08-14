@@ -7,6 +7,7 @@ import { Testimonial, ImpactStory } from '../types';
 import { CirclePlay, ArrowRight, Quote, Heart, Users, Globe, Leaf, Shield, CircleCheck, X, Activity, Brain, Stethoscope, Droplet, GraduationCap, Briefcase, Tent, HandHeart, Scale, Sun, Sparkles, Palette, Zap, Award, BookOpen, Smile, Star, Anchor, HeartHandshake, Target } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { getAllSystemSettings } from '../lib/systemSettingsCache';
 import * as LucideIcons from 'lucide-react';
 import SEO from '../components/SEO';
 
@@ -69,9 +70,8 @@ const Home: React.FC = () => {
             });
             
           // Fetch Content Settings
-          supabase.from('system_settings').select('*')
-            .in('key', ['home_hero_title', 'home_hero_subtitle', 'home_hero_bg', 'home_video_url', 'home_video_poster', 'home_slogan', 'home_explore_btn', 'home_pillars_json', 'home_spirit_section_json', 'home_impact_heading'])
-            .then(({data}) => {
+          getAllSystemSettings()
+            .then((data) => {
               if (data) {
                   const val = (k: string) => data.find(d => d.key === k)?.value;
 

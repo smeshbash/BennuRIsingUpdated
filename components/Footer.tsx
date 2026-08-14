@@ -3,6 +3,7 @@ import { Facebook, Twitter, Instagram, Youtube, MapPin, Mail, Phone, ArrowRight,
 import { Link, useNavigate } from 'react-router-dom';
 import { NAV_ITEMS, SOCIAL_LINKS } from '../constants';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { getAllSystemSettings } from '../lib/systemSettingsCache';
 import { SocialLink } from '../types';
 import { VisitorCountBar } from './VisitorCountBar';
 
@@ -33,9 +34,7 @@ const Footer: React.FC = () => {
 
   useEffect(() => {
     if (isSupabaseConfigured()) {
-        supabase.from('system_settings').select('*')
-        .in('key', ['nav_structure', 'contact_address', 'contact_phone', 'contact_email', 'footer_slogan', 'social_links_json', 'footer_text_config_json'])
-        .then(({data}) => {
+        getAllSystemSettings().then((data) => {
             if (data) {
                 const map: any = {};
                 data.forEach(d => map[d.key] = d.value);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { getAllSystemSettings, invalidateSystemSettingsCache } from '../lib/systemSettingsCache';
 import { Users, Eye, TrendingUp,} from 'lucide-react';
 
 export const VisitorCountBar: React.FC = () => {
@@ -28,12 +29,9 @@ export const VisitorCountBar: React.FC = () => {
         const fetchVisitorStats = async () => {
             if (isSupabaseConfigured()) {
                 try {
-                    const { data, error } = await supabase
-                        .from('system_settings')
-                        .select('key, value')
-                        .in('key', ['visitor_baseline_count', 'visitor_tracker_enabled']);
+                    const data = await getAllSystemSettings();
 
-                    if (!error && data) {
+                    if (data) {
                         const baselineObj = data.find(item => item.key === 'visitor_baseline_count');
                         const enabledObj = data.find(item => item.key === 'visitor_tracker_enabled');
 
@@ -47,6 +45,10 @@ export const VisitorCountBar: React.FC = () => {
                                         value: parsedBaseline.toString(),
                                         updated_at: new Date().toISOString()
                                     });
+                                    // The shared cache now holds a stale (pre-increment) baseline —
+                                    // clear it so any other reader (e.g. this component remounting)
+                                    // gets the true just-written value instead of the cached one.
+                                    invalidateSystemSettingsCache();
                                 }
                                 setTotalVisitors(parsedBaseline);
                             }

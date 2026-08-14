@@ -4,6 +4,7 @@ import { NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { Menu, X, ChevronDown } from 'lucide-react';
 import { NAV_ITEMS } from '../constants';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { getAllSystemSettings } from '../lib/systemSettingsCache';
 
 const Header: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,13 +16,11 @@ const Header: React.FC = () => {
 
   useEffect(() => {
     if (isSupabaseConfigured()) {
-        supabase.from('system_settings').select('key, value')
-        .in('key', ['nav_structure', 'header_config_json'])
-        .then(({data}) => {
+        getAllSystemSettings().then((data) => {
             if (data) {
                 const nav = data.find(d => d.key === 'nav_structure')?.value;
                 const conf = data.find(d => d.key === 'header_config_json')?.value;
-                
+
                 if (nav) { try { setNavItems(JSON.parse(nav)); } catch(e) { console.warn("Invalid nav JSON", e); } }
                 if (conf) { try { setConfig(prev => ({...prev, ...JSON.parse(conf)})); } catch(e) {} }
             }

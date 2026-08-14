@@ -174,7 +174,12 @@ export const AuthProvider = ({ children }: { children?: ReactNode }) => {
     } else {
       setProfile(null);
     }
-  }, [user, isSimulationMode]);
+    // Depend on user?.id (a stable string), not the user object itself. Supabase's
+    // getSession() and onAuthStateChange's initial event both call setUser() with a
+    // fresh object reference for the same underlying user on page load — keying off
+    // the object meant this effect (and the profile fetch inside it) fired 2-3x
+    // redundantly on every single page load for logged-in admins.
+  }, [user?.id, isSimulationMode]);
 
   return (
     <AuthContext.Provider value={{ user, profile, verifyOtp, requestOtp, login, logout, resetPassword, updatePassword, isLoading, isSimulationMode }}>

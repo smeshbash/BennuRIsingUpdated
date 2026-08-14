@@ -6,6 +6,7 @@ import { WingSelector } from "./WingSelector";
 import { DonationFrequency, DonationFund, DonationTier } from '../types';
 import { DONATION_TIERS, DONATION_FUNDS } from '../constants';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { getAllSystemSettings } from '../lib/systemSettingsCache';
 
 interface DonationWidgetProps {
   className?: string;
@@ -56,7 +57,7 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ className = "", default
               }
 
               // Fetch Tiers & Labels
-              const { data: systemData } = await supabase.from('system_settings').select('*').in('key', ['donation_tiers', 'widget_labels_json', 'enable_80g_tax_exemption', 'enable_monthly_donations']);
+              const systemData = await getAllSystemSettings();
 
               if (systemData) {
                   const tiersJson = systemData.find(d => d.key === 'donation_tiers')?.value;
