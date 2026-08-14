@@ -1128,7 +1128,8 @@ export const VolunteerSignupPage: React.FC = () => {
     const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
-    
+    const [paymentError, setPaymentError] = useState('');
+
     // Split amounts
     const MANDATORY_FEE = 101;
     const [optionalDonation, setOptionalDonation] = useState<number | ''>('');
@@ -1178,64 +1179,91 @@ export const VolunteerSignupPage: React.FC = () => {
         window.scrollTo(0, 0);
     };
 
-    const handleFinalSubmit = async (paymentId: string) => {
-        setLoading(true);
-        if (isSupabaseConfigured()) {
-            try {
-                // 1. Record Donation (Fee)
-                await supabase.from('donations').insert({
-                    donor_name: `${formData.firstName} ${formData.lastName}`,
-                    donor_email: formData.email,
-                    amount: totalAmount,
-                    fund_id: 'general', 
-                    status: 'success',
-                    payment_id: paymentId,
-                    frequency: 'once',
-                    is_verified: true
-                });
-
-                // 2. Submit Application
-                await supabase.from('volunteer_applications').insert({
-                    first_name: formData.firstName,
-                    last_name: formData.lastName,
-                    email: formData.email,
-                    phone: formData.phone,
-                    interest: formData.interest,
-                    amount_paid: totalAmount,
-                    payment_id: paymentId,
-                    application_type: 'volunteer'
-                });
-            } catch (err) { console.error(err); }
-        } else { await new Promise(r => setTimeout(r, 1000)); }
+    // Payment recording now happens exclusively server-side: the Razorpay
+    // webhook (server.ts, payment.captured handler) verifies the payment and
+    // writes both the donations row and the volunteer_applications row using
+    // `notes` returned by Razorpay itself, not client-submitted data. This
+    // function only reflects success in the UI once /api/verify-payment has
+    // confirmed the signature — it never writes to Supabase directly.
+    const handleFinalSubmit = async () => {
         setLoading(false); setSubmitted(true); window.scrollTo(0,0);
     };
 
     const initiatePayment = async () => {
         setLoading(true);
-        const options = {
-            key: razorpayKey,
-            amount: totalAmount * 100, // paise
-            currency: "INR",
-            name: "Bennu Rising Intl. Foundation",
-            description: `Volunteer Registration Fee`,
-            image: "/logo1.png",
-            prefill: {
-                name: `${formData.firstName} ${formData.lastName}`,
-                email: formData.email,
-                contact: formData.phone
-            },
-            theme: { color: "#003F7F" },
-            handler: async function (response: any) {
-                 await handleFinalSubmit(response.razorpay_payment_id);
-            },
-            modal: {
-                ondismiss: () => setLoading(false)
-            }
-        };
-        
-        // @ts-ignore
-        const rzp = new window.Razorpay(options);
-        rzp.open();
+        setPaymentError('');
+        try {
+            // 1. Create order on backend (server-side amount, not client-trusted)
+            const orderRes = await fetch('/api/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: totalAmount })
+            });
+            const orderData = await orderRes.json();
+            if (!orderData.order_id) throw new Error("Failed to create order: " + JSON.stringify(orderData));
+
+            const options = {
+                key: razorpayKey,
+                amount: orderData.amount,
+                currency: orderData.currency || "INR",
+                name: "Bennu Rising Intl. Foundation",
+                description: `Volunteer Registration Fee`,
+                image: "/logo1.png",
+                order_id: orderData.order_id,
+                notes: {
+                    signup_type: 'volunteer',
+                    first_name: formData.firstName,
+                    last_name: formData.lastName,
+                    email: formData.email,
+                    phone: formData.phone,
+                    interest: formData.interest
+                },
+                prefill: {
+                    name: `${formData.firstName} ${formData.lastName}`,
+                    email: formData.email,
+                    contact: formData.phone
+                },
+                theme: { color: "#003F7F" },
+                handler: async function (response: any) {
+                    try {
+                        // 2. Verify signature on backend before showing success
+                        const verifyRes = await fetch('/api/verify-payment', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature
+                            })
+                        });
+                        if (verifyRes.ok) {
+                            await handleFinalSubmit();
+                        } else {
+                            setPaymentError("Payment verification failed. If money was deducted, it will be auto-refunded or please contact us.");
+                            setLoading(false);
+                        }
+                    } catch (e) {
+                        setPaymentError("Payment verification error. Please contact us if money was deducted.");
+                        setLoading(false);
+                    }
+                },
+                modal: {
+                    ondismiss: () => setLoading(false)
+                }
+            };
+
+            // @ts-ignore
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response: any) {
+                setPaymentError(response?.error?.description || response?.error?.reason || "Payment failed");
+                setLoading(false);
+            });
+            rzp.open();
+        } catch (err) {
+            console.error(err);
+            setPaymentError("Failed to initialize payment. Please try again.");
+            setLoading(false);
+        }
     };
 
 
@@ -1425,12 +1453,18 @@ export const VolunteerSignupPage: React.FC = () => {
                                 </div>
                             </div>
 
+                            {paymentError && (
+                                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 rounded shadow-sm text-sm font-medium">
+                                    {paymentError}
+                                </div>
+                            )}
+
                             <div className="flex gap-4">
                                 <button onClick={initiatePayment} disabled={loading} className="flex-1 bg-gradient-to-r from-brand-green to-[#43a047] text-white font-bold py-4 rounded-2xl shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center disabled:opacity-70 text-lg uppercase tracking-wider">
                                     {loading ? <Loader2 className="animate-spin w-6 h-6" /> : `Pay ₹${totalAmount} & Join`}
                                 </button>
                             </div>
-                            
+
                             <p className="text-center text-[10px] text-gray-400 font-bold uppercase tracking-wide flex justify-center items-center"><Lock className="w-3 h-3 mr-1" /> Secure Payment</p>
                          </div>
                     )}
@@ -1708,6 +1742,7 @@ export const InternshipSignupPage: React.FC = () => {
 
     const [razorpayKey, setRazorpayKey] = useState(RAZORPAY_KEY_ID);
     const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', phone: '', interest: 'Operations & Management', university: '', major: '' });
+    const [paymentError, setPaymentError] = useState('');
 
     useEffect(() => {
         const fetchKey = async () => {
@@ -1717,58 +1752,96 @@ export const InternshipSignupPage: React.FC = () => {
         fetchKey();
     }, []);
 
+    // Application record is written server-side by the Razorpay webhook
+    // (server.ts, payment.captured handler) once it independently verifies
+    // the payment — this only flips the UI to "submitted" after
+    // /api/verify-payment confirms the signature.
+    const saveApplication = async () => {
+        setLoading(false); setSubmitted(true); window.scrollTo(0,0);
+    };
+
     const handlePaymentAndSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setPaymentError('');
 
         if (totalAmount > 0) {
-            const options = {
-                key: razorpayKey,
-                amount: totalAmount * 100, // paise
-                currency: "INR",
-                name: "Bennu Rising Intl. Foundation",
-                description: `Internship Application Fee`,
-                image: "/logo1.png",
-                prefill: {
-                    name: `${formData.firstName} ${formData.lastName}`,
-                    email: formData.email,
-                    contact: formData.phone
-                },
-                theme: { color: "#1e3a8a" },
-                handler: async function (response: any) {
-                    await saveApplication(response.razorpay_payment_id);
-                },
-                modal: {
-                    ondismiss: function() {
-                        setLoading(false);
-                    }
-                }
-            };
-            // @ts-ignore
-            const rzp = new window.Razorpay(options);
-            rzp.open();
-        } else {
-            await saveApplication(null);
-        }
-    };
-
-
-    const saveApplication = async (paymentId: string | null) => {
-        if (paymentId) {
             try {
-                const { error: dbError } = await supabase.from('volunteer_applications').insert({
-                    first_name: formData.firstName,
-                    last_name: formData.lastName,
-                    email: formData.email,
-                    phone: formData.phone,
-                    interest: formData.interest + ` (Univ: ${formData.university}, Major: ${formData.major})`,
-                    amount_paid: totalAmount,
-                    payment_id: paymentId,
-                    application_type: 'internship'
+                // 1. Create order on backend (server-side amount)
+                const orderRes = await fetch('/api/create-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: totalAmount })
                 });
-            } catch (err) { console.error(err); }
-        } else { await new Promise(r => setTimeout(r, 1000)); }
-        setLoading(false); setSubmitted(true); window.scrollTo(0,0);
+                const orderData = await orderRes.json();
+                if (!orderData.order_id) throw new Error("Failed to create order: " + JSON.stringify(orderData));
+
+                const options = {
+                    key: razorpayKey,
+                    amount: orderData.amount,
+                    currency: orderData.currency || "INR",
+                    name: "Bennu Rising Intl. Foundation",
+                    description: `Internship Application Fee`,
+                    image: "/logo1.png",
+                    order_id: orderData.order_id,
+                    notes: {
+                        signup_type: 'internship',
+                        first_name: formData.firstName,
+                        last_name: formData.lastName,
+                        email: formData.email,
+                        phone: formData.phone,
+                        interest: formData.interest + ` (Univ: ${formData.university}, Major: ${formData.major})`
+                    },
+                    prefill: {
+                        name: `${formData.firstName} ${formData.lastName}`,
+                        email: formData.email,
+                        contact: formData.phone
+                    },
+                    theme: { color: "#1e3a8a" },
+                    handler: async function (response: any) {
+                        try {
+                            // 2. Verify signature on backend before showing success
+                            const verifyRes = await fetch('/api/verify-payment', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    razorpay_order_id: response.razorpay_order_id,
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_signature: response.razorpay_signature
+                                })
+                            });
+                            if (verifyRes.ok) {
+                                await saveApplication();
+                            } else {
+                                setPaymentError("Payment verification failed. If money was deducted, it will be auto-refunded or please contact us.");
+                                setLoading(false);
+                            }
+                        } catch (e) {
+                            setPaymentError("Payment verification error. Please contact us if money was deducted.");
+                            setLoading(false);
+                        }
+                    },
+                    modal: {
+                        ondismiss: function() {
+                            setLoading(false);
+                        }
+                    }
+                };
+                // @ts-ignore
+                const rzp = new window.Razorpay(options);
+                rzp.on('payment.failed', function (response: any) {
+                    setPaymentError(response?.error?.description || response?.error?.reason || "Payment failed");
+                    setLoading(false);
+                });
+                rzp.open();
+            } catch (err) {
+                console.error(err);
+                setPaymentError("Failed to initialize payment. Please try again.");
+                setLoading(false);
+            }
+        } else {
+            await saveApplication();
+        }
     };
 
     if (submitted) {
@@ -1868,6 +1941,12 @@ export const InternshipSignupPage: React.FC = () => {
                                     <span>Total Amount</span>
                                     <span className="text-brand-blue text-3xl">₹{totalAmount}</span>
                                 </div>
+
+                                {paymentError && (
+                                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 rounded shadow-sm text-sm font-medium">
+                                        {paymentError}
+                                    </div>
+                                )}
 
                                 <div className="flex gap-4">
                                     <button type="button" onClick={() => setStep(1)} className="px-6 py-4 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all">

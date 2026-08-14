@@ -355,6 +355,76 @@ async function startServer() {
                 return res.status(200).json({ received: true, recorded: false, reason: "Supabase admin client not configured" });
             }
 
+            // Volunteer/internship signup registration fee — a different shape of
+            // payment than a regular donation, so it's branched out here rather
+            // than falling into the donationRecord logic below.
+            //
+            // Previously, VolunteerSignupPage/InternshipSignupPage opened Razorpay
+            // Checkout directly in the browser (no server-created order) and, on
+            // the client-side success callback, wrote straight to Supabase —
+            // including a donations row with is_verified: true — using whatever
+            // payment_id the browser reported. That's client-side JS, fully
+            // editable via devtools, with no server verification at all: anyone
+            // could fabricate a "paid, verified" application without paying
+            // anything. Recording it here instead, driven only by a real
+            // HMAC-verified webhook delivery from Razorpay and the payment.notes
+            // Razorpay itself returns (not anything the browser claims after the
+            // fact), closes that off.
+            if (notes.signup_type === 'volunteer' || notes.signup_type === 'internship') {
+                const { data: existingApp } = await admin
+                    .from('volunteer_applications')
+                    .select('id')
+                    .eq('payment_id', payment.id)
+                    .maybeSingle();
+
+                if (existingApp) {
+                    console.log(`[Webhook] Signup application for payment ${payment.id} already recorded — skipping (Razorpay retry)`);
+                    return res.status(200).json({ received: true, recorded: true, duplicate: true });
+                }
+
+                const applicationRecord = {
+                    first_name: notes.first_name || null,
+                    last_name: notes.last_name || null,
+                    email: notes.email || payment.email || null,
+                    phone: notes.phone || payment.contact || null,
+                    interest: notes.interest || null,
+                    amount_paid: payment.amount / 100,
+                    payment_id: payment.id,
+                    application_type: notes.signup_type,
+                };
+
+                const { error: appError } = await admin.from('volunteer_applications').insert(applicationRecord);
+                if (appError) {
+                    console.error("[Webhook] Failed to insert volunteer/internship application:", appError);
+                    return res.status(500).json({ error: "Database write failed" });
+                }
+                console.log(`[Webhook] Recorded ${notes.signup_type} application for payment ${payment.id}`);
+
+                // Volunteer signups (not internship) also record the fee as a
+                // donation — matching the pre-fix behavior, which wrote both a
+                // donations row and a volunteer_applications row for this flow.
+                if (notes.signup_type === 'volunteer') {
+                    const { error: donationError } = await admin.from('donations').upsert({
+                        donor_name: `${notes.first_name || ''} ${notes.last_name || ''}`.trim() || null,
+                        donor_email: applicationRecord.email,
+                        amount: applicationRecord.amount_paid,
+                        fund_id: 'general',
+                        status: 'success',
+                        payment_id: payment.id,
+                        frequency: 'once',
+                        is_verified: true,
+                    }, { onConflict: 'payment_id' });
+                    if (donationError) {
+                        console.error("[Webhook] Failed to record signup fee as a donation:", donationError);
+                        // Don't fail the whole webhook over this — the application
+                        // itself is already safely recorded above, which is the
+                        // part that actually matters for the applicant.
+                    }
+                }
+
+                return res.status(200).json({ received: true, recorded: true });
+            }
+
             const donationRecord: Record<string, any> = {
                 donor_name: notes.donor_name || null,
                 donor_email: notes.donor_email || payment.email || null,
