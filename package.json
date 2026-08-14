@@ -17,7 +17,7 @@
     "dompurify": "^3.3.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "lucide-react": "^0.554.0",
+    "lucide-react": "^1.31.0",
     "motion": "^12.40.0",
     "pdfkit": "^0.19.1",
     "razorpay": "^2.9.8",
