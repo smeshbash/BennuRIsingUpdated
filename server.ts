@@ -718,30 +718,45 @@ async function startServer() {
   // the database's own RLS policies use, so "is this caller actually an
   // admin" is answered by the database under the caller's real identity —
   // not by trusting a role claim the frontend sends.
+  //
+  // Shared by both admin-triggered email endpoints below (portal invite and
+  // manual welcome-email resend, plus any future ones): resolves whether the
+  // caller is genuinely an admin by forwarding their own Supabase access
+  // token to a request-scoped client and asking the database via is_admin()
+  // — the same function the RLS policies use — rather than trusting any
+  // role claim the frontend itself sends.
+  // Returns null when the caller is verified as an admin, or an
+  // { status, error } pair to send straight back to the client otherwise.
+  const verifyAdminToken = async (req: express.Request): Promise<{ status: number; error: string } | null> => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+        return { status: 401, error: "Missing bearer token" };
+    }
+    const token = authHeader.slice(7);
+
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !anonKey) {
+        console.error("[AdminAuth] Supabase URL/anon key not configured");
+        return { status: 500, error: "Server not configured" };
+    }
+
+    const callerClient = createClient(supabaseUrl, anonKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+        global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const { data: isAdmin, error: adminCheckError } = await callerClient.rpc('is_admin');
+    if (adminCheckError || !isAdmin) {
+        console.warn("[AdminAuth] Rejected non-admin or invalid-token request:", adminCheckError?.message);
+        return { status: 403, error: "Admins only" };
+    }
+    return null;
+  };
+
   app.post('/api/admin/send-portal-invite', async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith('Bearer ')) {
-          return res.status(401).json({ error: "Missing bearer token" });
-      }
-      const token = authHeader.slice(7);
-
-      const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-      const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
-      if (!supabaseUrl || !anonKey) {
-          console.error("[PortalInvite] Supabase URL/anon key not configured");
-          return res.status(500).json({ error: "Server not configured" });
-      }
-
-      const callerClient = createClient(supabaseUrl, anonKey, {
-          auth: { autoRefreshToken: false, persistSession: false },
-          global: { headers: { Authorization: `Bearer ${token}` } },
-      });
-      const { data: isAdmin, error: adminCheckError } = await callerClient.rpc('is_admin');
-      if (adminCheckError || !isAdmin) {
-          console.warn("[PortalInvite] Rejected non-admin or invalid-token request:", adminCheckError?.message);
-          return res.status(403).json({ error: "Admins only" });
-      }
+      const authError = await verifyAdminToken(req);
+      if (authError) return res.status(authError.status).json({ error: authError.error });
 
       const { application_id } = req.body;
       if (!application_id) {
@@ -755,7 +770,10 @@ async function startServer() {
 
       // Re-fetch from the database rather than trusting anything the client
       // sent about the applicant — and confirm the application is actually
-      // approved before sending an "you're accepted" email.
+      // approved before sending an "you're accepted" email. This same
+      // endpoint backs both the automatic send-on-approval call and the
+      // admin dashboard's manual "Resend invite" button, so this check
+      // applies to both.
       const { data: application, error: fetchError } = await admin
           .from('volunteer_applications')
           .select('id, first_name, email, application_type, status')
@@ -778,6 +796,54 @@ async function startServer() {
       res.json({ sent: true });
     } catch (error: any) {
       console.error("[PortalInvite] Unexpected error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Manual resend of the volunteer welcome email — same email the webhook
+  // sends automatically once a signup payment is verified, exposed here so
+  // an admin can re-send it (e.g. it bounced, went to spam, or RESEND_API_KEY
+  // wasn't configured yet when the applicant originally signed up).
+  // Volunteer-only: the email's copy ("this isn't just a volunteer role...")
+  // is written specifically for volunteers, matching the webhook, which also
+  // only ever sends this for signup_type === 'volunteer'.
+  app.post('/api/admin/send-welcome-email', async (req, res) => {
+    try {
+      const authError = await verifyAdminToken(req);
+      if (authError) return res.status(authError.status).json({ error: authError.error });
+
+      const { application_id } = req.body;
+      if (!application_id) {
+          return res.status(400).json({ error: "application_id is required" });
+      }
+
+      const admin = getSupabaseAdmin();
+      if (!admin) {
+          return res.status(500).json({ error: "Server not configured" });
+      }
+
+      const { data: application, error: fetchError } = await admin
+          .from('volunteer_applications')
+          .select('id, first_name, email, application_type')
+          .eq('id', application_id)
+          .maybeSingle();
+
+      if (fetchError || !application) {
+          return res.status(404).json({ error: "Application not found" });
+      }
+      if (application.application_type !== 'volunteer') {
+          return res.status(409).json({ error: "Welcome email is only available for volunteer applications" });
+      }
+
+      await sendVolunteerWelcomeEmail({
+          first_name: application.first_name,
+          email: application.email,
+          application_id: application.id,
+      });
+
+      res.json({ sent: true });
+    } catch (error: any) {
+      console.error("[WelcomeResend] Unexpected error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

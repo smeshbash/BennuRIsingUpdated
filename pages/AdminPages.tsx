@@ -1918,6 +1918,49 @@ const VolunteersManager = () => {
     else fetchVolunteers();
   }, [tab]);
 
+  // Shared by the automatic send-on-approval call below and the manual
+  // "Resend" buttons in the table. `silent` skips the success/failure alert
+  // for the automatic path (the status update succeeding is what matters
+  // there; a flaky email shouldn't interrupt the admin) while the manual
+  // buttons want explicit feedback since the admin is deliberately asking
+  // for a resend.
+  const [sendingEmailFor, setSendingEmailFor] = useState<string | null>(null);
+  const triggerAdminEmail = async (
+    endpoint: "send-portal-invite" | "send-welcome-email",
+    applicationId: number,
+    silent = false
+  ) => {
+    if (!silent) setSendingEmailFor(`${endpoint}-${applicationId}`);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        if (!silent) customAlert("Not signed in.");
+        return;
+      }
+      const res = await fetch(`/api/admin/${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ application_id: applicationId }),
+      });
+      if (!silent) {
+        if (res.ok) customAlert("Email sent!");
+        else {
+          const body = await res.json().catch(() => ({}));
+          customAlert("Error: " + (body.error || "Failed to send email."));
+        }
+      }
+    } catch (e) {
+      console.error(`Failed to trigger ${endpoint}:`, e);
+      if (!silent) customAlert("Error: Failed to send email.");
+    } finally {
+      if (!silent) setSendingEmailFor(null);
+    }
+  };
+
   const updateStatus = async (id: number, status: string) => {
     if (isSupabaseConfigured()) {
       const { data, error } = await supabase
@@ -1937,22 +1980,7 @@ const VolunteersManager = () => {
         // the part that matters, so a failure here is logged, not surfaced
         // as an error to the admin.
         if (status === "approved") {
-          try {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
-            if (token) {
-              await fetch("/api/admin/send-portal-invite", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ application_id: id }),
-              });
-            }
-          } catch (e) {
-            console.error("Failed to trigger portal invite email:", e);
-          }
+          triggerAdminEmail("send-portal-invite", id, true);
         }
       }
     }
@@ -2189,6 +2217,34 @@ const VolunteersManager = () => {
                         className="bg-red-50 text-red-600 hover:bg-red-100 p-2 rounded-lg transition"
                       >
                         <LucideIcons.Trash className="w-4 h-4" />
+                      </button>
+                    )}
+                    {(v.application_type || "volunteer") === "volunteer" && (
+                      <button
+                        onClick={() => triggerAdminEmail("send-welcome-email", v.id)}
+                        disabled={sendingEmailFor === `send-welcome-email-${v.id}`}
+                        title="Resend welcome email"
+                        className="bg-purple-50 text-purple-600 hover:bg-purple-100 p-2 rounded-lg transition disabled:opacity-50"
+                      >
+                        {sendingEmailFor === `send-welcome-email-${v.id}` ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <LucideIcons.Mail className="w-4 h-4" />
+                        )}
+                      </button>
+                    )}
+                    {tab === "active" && (
+                      <button
+                        onClick={() => triggerAdminEmail("send-portal-invite", v.id)}
+                        disabled={sendingEmailFor === `send-portal-invite-${v.id}`}
+                        title="Resend portal invite"
+                        className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 p-2 rounded-lg transition disabled:opacity-50"
+                      >
+                        {sendingEmailFor === `send-portal-invite-${v.id}` ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <LucideIcons.Send className="w-4 h-4" />
+                        )}
                       </button>
                     )}
                   </td>
