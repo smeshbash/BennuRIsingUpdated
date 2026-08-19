@@ -306,6 +306,69 @@ async function startServer() {
     }
   }
 
+  // Sends a new volunteer their welcome/onboarding email once their signup
+  // application is recorded (payment verified). Supabase's own auth emails
+  // (OTP codes for the volunteer portal login) are purely transactional and
+  // don't actually welcome anyone — this is the "you're in, here's what's
+  // next" email that was missing. Same best-effort contract as the donation
+  // receipt: never throws, never blocks or fails the webhook.
+  const sendVolunteerWelcomeEmail = async (volunteer: {
+    first_name: string | null;
+    email: string | null;
+    application_id: number | string | null;
+  }) => {
+    try {
+      const resendClient = getResend();
+      if (!resendClient) {
+          console.log("[Welcome] RESEND_API_KEY not set — skipping volunteer welcome email");
+          return;
+      }
+      if (!volunteer.email) {
+          console.log("[Welcome] No volunteer email on this application — skipping welcome email");
+          return;
+      }
+
+      const fromAddress = process.env.RECEIPT_FROM_EMAIL || 'onboarding@resend.dev';
+      const siteUrl = process.env.SITE_URL || 'https://bennurisinginternational.org';
+      const firstName = volunteer.first_name || 'friend';
+      const donationLink = volunteer.application_id
+          ? `${siteUrl}/donate?vid=${volunteer.application_id}`
+          : `${siteUrl}/donate`;
+
+      await resendClient.emails.send({
+          from: `Bennu Rising International Foundation <${fromAddress}>`,
+          to: volunteer.email,
+          subject: `Welcome to Bennu Rising, ${firstName}!`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1f2937;">
+              <h2 style="color:#003F7F;">Welcome to the family, ${firstName}!</h2>
+              <p>You just became part of something bigger than yourself. Every year, people sign up meaning to help "someday" — you didn't wait. That decision is already the first step in bringing healing, education, and hope to communities that need it most, and we're genuinely glad to have you with us.</p>
+              <p>This isn't just a volunteer role. It's a seat at the table with a team that shows up for people on their hardest days — and you're going to be part of the reason someone's story turns around.</p>
+
+              <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin:24px 0;">
+                <h3 style="color:#003F7F;margin-top:0;font-size:15px;">What happens next</h3>
+                <p style="margin:8px 0;"><strong>A personal call.</strong> A representative from our team will call you soon to walk you through your role and answer any questions.</p>
+                <p style="margin:8px 0;"><strong>Weekly orientation.</strong> We run a weekly Zoom session for new volunteers, walking you through everything you need to get started. We'll share the exact day, time, and link with advance notice — keep an eye on your inbox.</p>
+              </div>
+
+              <div style="background:#eef2ff;border-radius:12px;padding:20px;margin:24px 0;text-align:center;">
+                <p style="margin:0 0 12px 0;font-weight:bold;color:#1f2937;">Your personal fundraising link</p>
+                <p style="margin:0 0 16px 0;font-size:13px;color:#6b7280;">Every donation made through this link is tracked back to you — share it with friends and family to multiply your impact from day one.</p>
+                <a href="${donationLink}" style="display:inline-block;background:#003F7F;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:8px;font-size:14px;">${donationLink}</a>
+              </div>
+
+              <p>Thank you for saying yes. We can't wait to see what we build together.</p>
+              <p style="margin-top:24px;">With gratitude,<br/>The Bennu Rising International Foundation Team</p>
+              <p style="color:#6b7280;font-size:13px;margin-top:24px;border-top:1px solid #e5e7eb;padding-top:16px;">Bennu Rising International Foundation<br/>10/62, Odakkal Sreepatham, Eruva East PO, Kayamkulam, Muthukulam, Karthikappally, Alappuzha, Kerala, India - 690506</p>
+            </div>
+          `,
+      });
+      console.log(`[Welcome] Sent volunteer welcome email to ${volunteer.email}`);
+    } catch (err: any) {
+      console.error("[Welcome] Failed to send volunteer welcome email:", err);
+    }
+  }
+
   // --- Razorpay Webhook ---
   // Registered BEFORE express.json() and with its own express.raw() middleware,
   // because signature verification must run over the exact raw request bytes
@@ -400,7 +463,14 @@ async function startServer() {
                     application_type: notes.signup_type,
                 };
 
-                const { error: appError } = await admin.from('volunteer_applications').insert(applicationRecord);
+                // .select('id').single() so we get the new row's id back —
+                // needed to build the personalized donation link
+                // (?vid=<application id>) in the volunteer welcome email below.
+                const { data: insertedApp, error: appError } = await admin
+                    .from('volunteer_applications')
+                    .insert(applicationRecord)
+                    .select('id')
+                    .single();
                 if (appError) {
                     console.error("[Webhook] Failed to insert volunteer/internship application:", appError);
                     return res.status(500).json({ error: "Database write failed" });
@@ -427,6 +497,16 @@ async function startServer() {
                         // itself is already safely recorded above, which is the
                         // part that actually matters for the applicant.
                     }
+
+                    // Onboarding welcome email — best-effort, mirrors the
+                    // donation receipt's error-swallowing contract so a flaky
+                    // email provider never fails this webhook or blocks the
+                    // applicant's checkout flow.
+                    await sendVolunteerWelcomeEmail({
+                        first_name: applicationRecord.first_name,
+                        email: applicationRecord.email,
+                        application_id: insertedApp?.id ?? null,
+                    });
                 }
 
                 return res.status(200).json({ received: true, recorded: true });

@@ -7,7 +7,7 @@ import Footer from './components/Footer';
 import AnnouncementBar from './components/AnnouncementBar';
 import Home from './pages/Home';
 import DonateFlow from './pages/DonateFlow';
-import { AboutPage, WorkPage, GalleryPage, PartnersPage, ImpactPage, BlogPage, VolunteerPage, InternshipPage, VolunteerSignupPage, InternshipSignupPage, PrivacyPage, TermsPage, RefundPage } from './pages/ContentPages';
+import { AboutPage, WorkPage, GalleryPage, PartnersPage, ImpactPage, BlogPage, VolunteerPage, InternshipPage, VolunteerSignupPage, InternshipSignupPage, InternshipComingSoonPage, PrivacyPage, TermsPage, RefundPage } from './pages/ContentPages';
 import { AdminLogin, AdminDashboard } from './pages/AdminPages';
 import { ContributorPortal } from './pages/ContributorPortal';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -78,7 +78,10 @@ const App = () => {
           <Route path="/volunteer" element={<VolunteerPage />} />
           <Route path="/internship" element={<InternshipPage />} />
           <Route path="/volunteer-signup" element={<VolunteerSignupPage />} />
-          <Route path="/internship-signup" element={<InternshipSignupPage />} />
+          {/* Internship applications are paused — routed to the coming-soon
+              gate page instead of InternshipSignupPage. Swap the element
+              back to <InternshipSignupPage /> to reopen applications. */}
+          <Route path="/internship-signup" element={<InternshipComingSoonPage />} />
           <Route path="/portal" element={<ContributorPortal />} />
           <Route path="/internship-portal" element={<ContributorPortal portalType="internship" />} />
           <Route path="/volunteer-portal" element={<ContributorPortal portalType="volunteer" />} />

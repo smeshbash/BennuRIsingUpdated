@@ -1718,10 +1718,10 @@ export const InternshipPage: React.FC = () => {
 
                 <div id="apply" className="bg-gray-900 text-white rounded-3xl p-12 text-center relative overflow-hidden scroll-mt-24">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                    <h2 className="text-3xl font-bold mb-6 relative z-10">Ready to accelerate your career?</h2>
-                    <p className="mb-8 max-w-xl mx-auto text-gray-400 relative z-10">Join our upcoming cohort. Applications are reviewed on a rolling basis.</p>
+                    <span className="inline-flex items-center gap-2 bg-white/10 text-white/90 text-xs font-bold uppercase tracking-wide px-4 py-2 rounded-full mb-6 relative z-10"><Clock className="w-3.5 h-3.5" /> Applications Paused — Coming Soon</span>
+                    <h2 className="text-3xl font-bold mb-6 relative z-10">We're redesigning our internship program.</h2>
+                    <p className="mb-8 max-w-xl mx-auto text-gray-400 relative z-10">New applications aren't open yet — check back soon. Already have an active application? Use the portal below.</p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center items-center relative z-10">
-                        <Link to="/internship-signup" className="inline-block bg-brand-blue text-white px-10 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all">Apply for Internship</Link>
                         <Link to="/internship-portal" className="inline-block bg-transparent border border-white/30 text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-white/10 transition-all">Internship Portal</Link>
                     </div>
                 </div>
@@ -1730,11 +1730,16 @@ export const InternshipPage: React.FC = () => {
     );
 };
 
+// Full application + payment flow, kept intact and unrouted while the
+// internship program is paused — App.tsx currently points /internship-signup
+// at InternshipComingSoonPage below instead of this component. Re-point the
+// route back here whenever the program reopens; nothing in this component
+// needs to change to bring it back.
 export const InternshipSignupPage: React.FC = () => {
     const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
-    
+
     // Split amounts
     const MANDATORY_FEE = 101;
     const [optionalDonation, setOptionalDonation] = useState<number | ''>('');
@@ -1864,7 +1869,7 @@ export const InternshipSignupPage: React.FC = () => {
                     <h2 className="text-2xl font-bold mb-2">Internship Application Form</h2>
                     <p className="text-gray-400 text-sm">Please fill out all required fields accurately.</p>
                 </div>
-                
+
                 <div className="p-8 md:p-12">
                     <form onSubmit={step === 1 ? (e) => { e.preventDefault(); setStep(2); } : handlePaymentAndSubmit} className="space-y-6">
                         {step === 1 ? (
@@ -1917,7 +1922,7 @@ export const InternshipSignupPage: React.FC = () => {
                                 <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
                                     <h3 className="font-bold text-brand-blue mb-2 flex items-center"><Shield className="w-5 h-5 mr-2" /> Application Fee</h3>
                                     <p className="text-sm text-blue-800 mb-4">To process your application and ensure commitment, we require a nominal, non-refundable application fee.</p>
-                                    
+
                                     <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-blue-100 mb-4">
                                         <span className="font-bold text-gray-700">Base Fee</span>
                                         <span className="font-bold text-brand-blue">₹{MANDATORY_FEE}</span>
@@ -1926,13 +1931,13 @@ export const InternshipSignupPage: React.FC = () => {
                                     <div className="space-y-2">
                                         <label className="block text-sm font-bold text-gray-700">Optional Donation (₹)</label>
                                         <p className="text-xs text-gray-500 mb-2">Support our ongoing projects with an additional contribution.</p>
-                                        <input 
-                                            type="number" 
+                                        <input
+                                            type="number"
                                             min="0"
-                                            value={optionalDonation} 
-                                            onChange={e => setOptionalDonation(e.target.value === '' ? '' : Number(e.target.value))} 
-                                            className="w-full border-2 border-gray-200 p-4 rounded-xl focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10 outline-none transition-all" 
-                                            placeholder="0" 
+                                            value={optionalDonation}
+                                            onChange={e => setOptionalDonation(e.target.value === '' ? '' : Number(e.target.value))}
+                                            className="w-full border-2 border-gray-200 p-4 rounded-xl focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10 outline-none transition-all"
+                                            placeholder="0"
                                         />
                                     </div>
                                 </div>
@@ -1960,6 +1965,24 @@ export const InternshipSignupPage: React.FC = () => {
                         )}
                     </form>
                 </div>
+            </div>
+        </PageLayout>
+    );
+};
+
+// NEW gate page — /internship-signup is rerouted to this component (see
+// App.tsx) instead of InternshipSignupPage while applications are paused.
+// Swap the route back to InternshipSignupPage whenever the program reopens.
+export const InternshipComingSoonPage: React.FC = () => {
+    return (
+        <PageLayout title="Internship Program" subtitle="Applications are currently paused." theme="beige" seoDescription="Bennu Rising International Foundation's internship program is coming soon. Check back soon or explore our volunteer program in the meantime.">
+            <div className="max-w-xl mx-auto text-center py-16">
+                <div className="w-24 h-24 bg-brand-blue/10 rounded-full flex items-center justify-center mx-auto mb-8">
+                    <Clock className="w-12 h-12 text-brand-blue" />
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">Coming Soon</h2>
+                <p className="text-gray-600 mb-8 text-lg">We're currently redesigning our internship program and aren't accepting new applications right now. Check back soon — in the meantime, our volunteer program is open and a great way to get involved.</p>
+                <Link to="/volunteer-signup" className="inline-block bg-brand-blue text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all">Explore Volunteering</Link>
             </div>
         </PageLayout>
     );
