@@ -851,10 +851,11 @@ export const ContributorPortal: React.FC<{ portalType?: 'internship' | 'voluntee
                                         <h3 className="font-bold text-xl text-gray-900">{goal.title} {goal.is_system_goal && <span className="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded ml-2">System Goal</span>}</h3>
                                         <p className="text-gray-600 text-sm">{goal.description}</p>
                                     </div>
-                                    <span className="font-bold text-brand-blue">{goal.current_value} / {goal.target_value}{goal.unit ? ` ${goal.unit}` : ''}</span>
-                                </div>
-                                <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden mt-4">
-                                    <div className="h-full bg-brand-blue transition-all" style={{ width: `${Math.min(100, (goal.current_value / goal.target_value) * 100)}%` }}></div>
+                                    {/* Progress isn't tracked automatically yet, so showing a
+                                        "0 / target" fraction or a bar stuck at 0% would be
+                                        misleading — just state the target until real progress
+                                        tracking exists. */}
+                                    <span className="font-bold text-brand-blue">Target: {goal.target_value}{goal.unit ? ` ${goal.unit}` : ''}</span>
                                 </div>
                             </div>
                         ))}

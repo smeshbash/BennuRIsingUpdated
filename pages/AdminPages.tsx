@@ -1726,8 +1726,10 @@ const VolunteerPortalManager = ({
                       <p className="text-xs text-gray-500">{g.description}</p>
                     </div>
                     <div className="flex items-center gap-4">
+                      {/* Not auto-tracked yet — showing a static target instead
+                          of a "0/target" fraction that would never move. */}
                       <div className="font-mono text-sm font-bold text-brand-blue">
-                        {g.current_value}/{g.target_value}{g.unit ? ` ${g.unit}` : ''}
+                        Target: {g.target_value}{g.unit ? ` ${g.unit}` : ''}
                       </div>
                       <button
                         onClick={() => revokeGoal(g.id)}
