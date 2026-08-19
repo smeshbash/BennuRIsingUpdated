@@ -1121,6 +1121,10 @@ export const BlogPage: React.FC = () => {
     );
 };
 
+// Bumped whenever the terms text below materially changes, so
+// terms_version recorded against older applications stays meaningful.
+const VOLUNTEER_TERMS_VERSION = 'v1';
+
 export const VolunteerSignupPage: React.FC = () => {
     const location = useLocation();
     const initialEmail = location.state?.email || '';
@@ -1129,6 +1133,8 @@ export const VolunteerSignupPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
     const [paymentError, setPaymentError] = useState('');
+    const [termsAccepted, setTermsAccepted] = useState(false);
+    const [termsError, setTermsError] = useState('');
 
     // Split amounts
     const MANDATORY_FEE = 101;
@@ -1190,6 +1196,11 @@ export const VolunteerSignupPage: React.FC = () => {
     };
 
     const initiatePayment = async () => {
+        if (!termsAccepted) {
+            setTermsError('Please read and accept the Terms & Conditions to continue.');
+            return;
+        }
+        setTermsError('');
         setLoading(true);
         setPaymentError('');
         try {
@@ -1216,7 +1227,14 @@ export const VolunteerSignupPage: React.FC = () => {
                     last_name: formData.lastName,
                     email: formData.email,
                     phone: formData.phone,
-                    interest: formData.interest
+                    interest: formData.interest,
+                    // Recorded server-side against the application row so
+                    // there's a timestamped record of acceptance — the
+                    // certificate/recognition clauses in these terms are
+                    // conditions the org may need to point back to later.
+                    terms_accepted: 'true',
+                    terms_accepted_at: new Date().toISOString(),
+                    terms_version: VOLUNTEER_TERMS_VERSION
                 },
                 prefill: {
                     name: `${formData.firstName} ${formData.lastName}`,
@@ -1451,6 +1469,25 @@ export const VolunteerSignupPage: React.FC = () => {
                                     <span className="text-sm font-bold uppercase">Total Payable</span>
                                     <span className="text-3xl font-serif-heading font-extrabold">₹{totalAmount}</span>
                                 </div>
+                            </div>
+
+                            <div className="bg-white rounded-2xl shadow-inner border border-gray-100 p-5">
+                                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Terms & Conditions</h4>
+                                <div className="max-h-40 overflow-y-auto text-xs text-gray-600 leading-relaxed space-y-3 pr-2 border border-gray-100 rounded-xl p-3 bg-gray-50">
+                                    <p>By submitting this application, you confirm that the information you've provided is accurate, and you agree to abide by Bennu Rising International Foundation's code of conduct and the directions of program coordinators during your engagement. Volunteering with the Foundation does not create any employment, agency, or contractual work relationship. The ₹101 registration fee is non-refundable, and the Foundation may modify its programs, schedules, or these terms at any time. Personal information you provide is used solely to process your application and coordinate volunteer activities, consistent with our <Link to="/privacy" className="text-brand-blue underline">Privacy Policy</Link>. The Foundation may suspend or terminate a volunteer's status at its discretion for violation of these terms or its code of conduct.</p>
+                                    <p><strong className="text-gray-800">Certificate & recognition eligibility.</strong> A Certificate of Service or other recognition is not automatically granted upon payment of the registration fee. It is awarded at the sole discretion of Bennu Rising International Foundation, and is conditional on: (a) active and consistent participation in activities organized by the Foundation throughout your volunteer term; (b) meeting any fundraising goals or targets communicated to you; (c) meeting any other mandatory goals, milestones, or requirements the Foundation sets now or may set in the future; and (d) maintaining standards of conduct, character, and professionalism throughout your engagement. The Foundation reserves the right to withhold or revoke a certificate or recognition where these criteria are not met, or for conduct inconsistent with the Foundation's values.</p>
+                                    <p>See our full <Link to="/terms" className="text-brand-blue underline">Terms of Service</Link> for additional details.</p>
+                                </div>
+                                <label className="flex items-start gap-3 mt-4 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={termsAccepted}
+                                        onChange={(e) => { setTermsAccepted(e.target.checked); if (e.target.checked) setTermsError(''); }}
+                                        className="mt-1 w-4 h-4 accent-brand-blue flex-shrink-0"
+                                    />
+                                    <span className="text-xs text-gray-600 font-medium">I have read and agree to the Terms & Conditions above, including the certificate and recognition eligibility criteria.</span>
+                                </label>
+                                {termsError && <p className="text-xs text-red-600 font-medium mt-2">{termsError}</p>}
                             </div>
 
                             {paymentError && (

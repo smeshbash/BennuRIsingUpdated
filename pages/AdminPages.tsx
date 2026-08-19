@@ -1927,7 +1927,34 @@ const VolunteersManager = () => {
         .select();
       if (error) customAlert("Error: " + error.message);
       else if (!data || data.length === 0) customAlert("Permission denied.");
-      else fetchVolunteers();
+      else {
+        fetchVolunteers();
+        // Portal login instructions go out as a separate email from the
+        // signup welcome email, and only once the application is actually
+        // approved (covers both first-time approval from "requests" and
+        // restoring someone from inactive/terminated back to active).
+        // Best-effort: the status update above already succeeded and is
+        // the part that matters, so a failure here is logged, not surfaced
+        // as an error to the admin.
+        if (status === "approved") {
+          try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData?.session?.access_token;
+            if (token) {
+              await fetch("/api/admin/send-portal-invite", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ application_id: id }),
+              });
+            }
+          } catch (e) {
+            console.error("Failed to trigger portal invite email:", e);
+          }
+        }
+      }
     }
   };
   const savePageConfig = async () => {

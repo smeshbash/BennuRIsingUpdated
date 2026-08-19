@@ -262,6 +262,7 @@ async function startServer() {
       }
 
       const fromAddress = process.env.RECEIPT_FROM_EMAIL || 'onboarding@resend.dev';
+      const siteUrl = process.env.SITE_URL || 'https://bennurisinginternational.org';
       const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
       const frequencyLabel = donation.frequency === 'monthly' ? 'Monthly Donation (First Installment)' : 'One-Time Donation';
 
@@ -280,6 +281,10 @@ async function startServer() {
           subject: `Your donation receipt — ₹${donation.amount}`,
           html: `
             <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1f2937;">
+              <div style="text-align:center;margin-bottom:24px;">
+                <img src="${siteUrl}/logo1.png" alt="Bennu Rising International Foundation" height="48" style="height:48px;width:auto;" />
+                <p style="color:#9ca3af;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin:8px 0 0;">Heal. Empower. Rise.</p>
+              </div>
               <h2 style="color:#003F7F;">Thank you, ${donation.donor_name || 'friend'}!</h2>
               <p>Your generosity brings healing and hope. Here's your donation receipt — a PDF copy is attached too.</p>
               <table style="width:100%;border-collapse:collapse;margin:20px 0;">
@@ -341,6 +346,10 @@ async function startServer() {
           subject: `Welcome to Bennu Rising, ${firstName}!`,
           html: `
             <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1f2937;">
+              <div style="text-align:center;margin-bottom:24px;">
+                <img src="${siteUrl}/logo1.png" alt="Bennu Rising International Foundation" height="48" style="height:48px;width:auto;" />
+                <p style="color:#9ca3af;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin:8px 0 0;">Heal. Empower. Rise.</p>
+              </div>
               <h2 style="color:#003F7F;">Welcome to the family, ${firstName}!</h2>
               <p>You just became part of something bigger than yourself. Every year, people sign up meaning to help "someday" — you didn't wait. That decision is already the first step in bringing healing, education, and hope to communities that need it most, and we're genuinely glad to have you with us.</p>
               <p>This isn't just a volunteer role. It's a seat at the table with a team that shows up for people on their hardest days — and you're going to be part of the reason someone's story turns around.</p>
@@ -366,6 +375,71 @@ async function startServer() {
       console.log(`[Welcome] Sent volunteer welcome email to ${volunteer.email}`);
     } catch (err: any) {
       console.error("[Welcome] Failed to send volunteer welcome email:", err);
+    }
+  }
+
+  // Sends the contributor portal login instructions — a separate email from
+  // the initial signup welcome email, sent only once an admin actually
+  // accepts the application (not at signup time, when acceptance is still
+  // pending review). Triggered from POST /api/admin/send-portal-invite below.
+  const sendPortalInviteEmail = async (applicant: {
+    first_name: string | null;
+    email: string | null;
+    application_type: string | null;
+  }) => {
+    try {
+      const resendClient = getResend();
+      if (!resendClient) {
+          console.log("[PortalInvite] RESEND_API_KEY not set — skipping portal invite email");
+          return;
+      }
+      if (!applicant.email) {
+          console.log("[PortalInvite] No email on this application — skipping portal invite email");
+          return;
+      }
+
+      const fromAddress = process.env.RECEIPT_FROM_EMAIL || 'onboarding@resend.dev';
+      const siteUrl = process.env.SITE_URL || 'https://bennurisinginternational.org';
+      const firstName = applicant.first_name || 'friend';
+      const portalPath = applicant.application_type === 'internship' ? '/internship-portal' : '/volunteer-portal';
+      const portalLink = `${siteUrl}${portalPath}`;
+
+      await resendClient.emails.send({
+          from: `Bennu Rising International Foundation <${fromAddress}>`,
+          to: applicant.email,
+          subject: `You're in, ${firstName}! Here's how to access your portal`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1f2937;">
+              <div style="text-align:center;margin-bottom:24px;">
+                <img src="${siteUrl}/logo1.png" alt="Bennu Rising International Foundation" height="48" style="height:48px;width:auto;" />
+                <p style="color:#9ca3af;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin:8px 0 0;">Heal. Empower. Rise.</p>
+              </div>
+              <h2 style="color:#003F7F;">Your application has been accepted, ${firstName}!</h2>
+              <p>Great news — your application is officially approved. You now have access to your personal contributor portal, where you can track your progress, manage your goals, view and download your certificates, and see the impact of the donations raised through your personal link.</p>
+
+              <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin:24px 0;">
+                <h3 style="color:#003F7F;margin-top:0;font-size:15px;">How to log in</h3>
+                <p style="margin:8px 0;font-size:13px;line-height:1.6;">There's no password to remember. Just go to the portal link below, enter this email address, and we'll send you a one-time 6-digit code to sign in.</p>
+                <ol style="margin:8px 0;padding-left:20px;font-size:13px;line-height:1.8;">
+                  <li>Open the portal link below</li>
+                  <li>Enter <strong>${applicant.email}</strong></li>
+                  <li>Check your inbox for a 6-digit code and enter it</li>
+                </ol>
+              </div>
+
+              <div style="text-align:center;margin:24px 0;">
+                <a href="${portalLink}" style="display:inline-block;background:#003F7F;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:8px;font-size:14px;">Go to your portal</a>
+              </div>
+
+              <p>We're excited to have you fully on board. If you have any trouble logging in, just reply to this email.</p>
+              <p style="margin-top:24px;">With gratitude,<br/>The Bennu Rising International Foundation Team</p>
+              <p style="color:#6b7280;font-size:13px;margin-top:24px;border-top:1px solid #e5e7eb;padding-top:16px;">Bennu Rising International Foundation<br/>10/62, Odakkal Sreepatham, Eruva East PO, Kayamkulam, Muthukulam, Karthikappally, Alappuzha, Kerala, India - 690506</p>
+            </div>
+          `,
+      });
+      console.log(`[PortalInvite] Sent portal invite email to ${applicant.email}`);
+    } catch (err: any) {
+      console.error("[PortalInvite] Failed to send portal invite email:", err);
     }
   }
 
@@ -461,6 +535,13 @@ async function startServer() {
                     amount_paid: payment.amount / 100,
                     payment_id: payment.id,
                     application_type: notes.signup_type,
+                    // Timestamped record that the applicant accepted the
+                    // Terms & Conditions (including the certificate/
+                    // recognition eligibility clauses) at signup — sourced
+                    // from Razorpay's own payment.notes, not re-derived or
+                    // trusted from any later client request.
+                    terms_accepted_at: notes.terms_accepted === 'true' ? (notes.terms_accepted_at || null) : null,
+                    terms_version: notes.terms_accepted === 'true' ? (notes.terms_version || null) : null,
                 };
 
                 // .select('id').single() so we get the new row's id back —
@@ -617,6 +698,87 @@ async function startServer() {
     } catch (error: any) {
       console.error("[API: /create-order] Error creating order via Razorpay:", error);
       res.status(500).json({ error: error.message || "Failed to create order" });
+    }
+  });
+
+  // Send Portal Invite Endpoint
+  //
+  // Fires the "you're accepted, here's how to log in" email — separate from
+  // the signup welcome email, and only meant to go out once an admin has
+  // actually approved the application. The admin dashboard's status update
+  // (VolunteersManager in AdminPages.tsx) still writes status='approved'
+  // directly via the RLS-protected Supabase client exactly as before; this
+  // endpoint only handles sending the email, and re-derives everything from
+  // the database rather than trusting whatever the client claims about the
+  // applicant.
+  //
+  // Auth: the caller's own Supabase access token is forwarded in the
+  // Authorization header. We open a request-scoped Supabase client with that
+  // token (not the service-role key) and call the same is_admin() function
+  // the database's own RLS policies use, so "is this caller actually an
+  // admin" is answered by the database under the caller's real identity —
+  // not by trusting a role claim the frontend sends.
+  app.post('/api/admin/send-portal-invite', async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+          return res.status(401).json({ error: "Missing bearer token" });
+      }
+      const token = authHeader.slice(7);
+
+      const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+      const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+      if (!supabaseUrl || !anonKey) {
+          console.error("[PortalInvite] Supabase URL/anon key not configured");
+          return res.status(500).json({ error: "Server not configured" });
+      }
+
+      const callerClient = createClient(supabaseUrl, anonKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+          global: { headers: { Authorization: `Bearer ${token}` } },
+      });
+      const { data: isAdmin, error: adminCheckError } = await callerClient.rpc('is_admin');
+      if (adminCheckError || !isAdmin) {
+          console.warn("[PortalInvite] Rejected non-admin or invalid-token request:", adminCheckError?.message);
+          return res.status(403).json({ error: "Admins only" });
+      }
+
+      const { application_id } = req.body;
+      if (!application_id) {
+          return res.status(400).json({ error: "application_id is required" });
+      }
+
+      const admin = getSupabaseAdmin();
+      if (!admin) {
+          return res.status(500).json({ error: "Server not configured" });
+      }
+
+      // Re-fetch from the database rather than trusting anything the client
+      // sent about the applicant — and confirm the application is actually
+      // approved before sending an "you're accepted" email.
+      const { data: application, error: fetchError } = await admin
+          .from('volunteer_applications')
+          .select('id, first_name, email, application_type, status')
+          .eq('id', application_id)
+          .maybeSingle();
+
+      if (fetchError || !application) {
+          return res.status(404).json({ error: "Application not found" });
+      }
+      if (application.status !== 'approved') {
+          return res.status(409).json({ error: "Application is not in approved status" });
+      }
+
+      await sendPortalInviteEmail({
+          first_name: application.first_name,
+          email: application.email,
+          application_type: application.application_type,
+      });
+
+      res.json({ sent: true });
+    } catch (error: any) {
+      console.error("[PortalInvite] Unexpected error:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
