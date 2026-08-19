@@ -208,10 +208,16 @@ async function startServer() {
         doc.fontSize(8.5).font('Helvetica').fillColor(BRAND.blue)
           .text('bennurisinginternational.org', left, footerY + 44, { width: contentW, align: 'center' });
 
+        const ackText = "Thank you for your generous contribution. We gratefully acknowledge that this is a voluntary donation made to support the organization's charitable activities. No goods or services were provided, in whole or in part, by Bennu Rising International Foundation to the donor in exchange for this contribution.";
+        const ackWidth = contentW - 40;
+        doc.fontSize(8).font('Helvetica-Oblique').fillColor(BRAND.lightGray)
+          .text(ackText, left + 20, footerY + 66, { width: ackWidth, align: 'center' });
+        const ackHeight = doc.heightOfString(ackText, { width: ackWidth });
+
         doc.fontSize(8).font('Helvetica-Oblique').fillColor(BRAND.lightGray)
           .text(
             'This is a computer-generated payment receipt confirming a donation received via Razorpay. It does not constitute a tax-exemption certificate.',
-            left + 20, footerY + 66, { width: contentW - 40, align: 'center' }
+            left + 20, footerY + 66 + ackHeight + 8, { width: ackWidth, align: 'center' }
           );
 
         doc.end();
@@ -283,6 +289,7 @@ async function startServer() {
                 <tr><td style="padding:8px 0;color:#6b7280;">Date</td><td style="padding:8px 0;text-align:right;">${dateStr}</td></tr>
                 <tr><td style="padding:8px 0;color:#6b7280;">Reference ID</td><td style="padding:8px 0;text-align:right;font-family:monospace;font-size:12px;">${donation.payment_id}</td></tr>
               </table>
+              <p style="color:#6b7280;font-size:12px;line-height:1.5;border-top:1px solid #e5e7eb;padding-top:16px;">Thank you for your generous contribution. We gratefully acknowledge that this is a voluntary donation made to support the organization's charitable activities. No goods or services were provided, in whole or in part, by Bennu Rising International Foundation to the donor in exchange for this contribution.</p>
               <p style="color:#6b7280;font-size:13px;margin-top:24px;">Bennu Rising International Foundation<br/>10/62, Odakkal Sreepatham, Eruva East PO, Kayamkulam, Muthukulam, Karthikappally, Alappuzha, Kerala, India - 690506</p>
             </div>
           `,
