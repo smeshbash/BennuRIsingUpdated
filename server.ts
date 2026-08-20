@@ -951,9 +951,30 @@ async function startServer() {
     }
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    // Cache strategy — this is what actually prevents the "white screen after
+    // deploy" class of bug:
+    //   - Vite fingerprints every JS/CSS file under /assets with a content
+    //     hash in the filename (e.g. index-0g5VI4w3.js). A given filename's
+    //     content never changes, so these are safe to cache forever.
+    //   - index.html is what points at that hash. With no explicit
+    //     Cache-Control, Express/browsers fall back to heuristic caching, so
+    //     a visitor's browser (or an intermediate proxy) can hang onto an
+    //     old index.html referencing a JS file that no longer exists after
+    //     the next deploy — that 404 on the entrypoint script is exactly
+    //     what produced the blank white screen. index.html must always be
+    //     revalidated so it never goes stale.
+    app.use(express.static(distPath, {
+        setHeaders: (res, filePath) => {
+            if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+                res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            } else {
+                res.setHeader('Cache-Control', 'no-cache');
+            }
+        }
+    }));
     // Support React Router fallback
     app.use((req, res) => {
+      res.setHeader('Cache-Control', 'no-cache');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
