@@ -545,6 +545,15 @@ async function startServer() {
                     amount_paid: payment.amount / 100,
                     payment_id: payment.id,
                     application_type: notes.signup_type,
+                    // Auto-accepted the moment a real, verified payment lands —
+                    // no admin click required. This is safe because acceptance
+                    // is now gated on the same server-verified payment that was
+                    // already required to reach this code path (the whole point
+                    // of the earlier payment-security fix), not on anything the
+                    // client can forge. Admins retain the Inactive/Terminate
+                    // controls in VolunteersManager to remove someone after the
+                    // fact if needed.
+                    status: 'approved',
                     // Timestamped record that the applicant accepted the
                     // Terms & Conditions (including the certificate/
                     // recognition eligibility clauses) at signup — sourced
@@ -599,6 +608,19 @@ async function startServer() {
                         application_id: insertedApp?.id ?? null,
                     });
                 }
+
+                // Portal invite email — since applications are now
+                // auto-accepted above instead of waiting on an admin's
+                // manual Approve click, this fires immediately for both
+                // volunteer and internship signups rather than only from
+                // POST /api/admin/send-portal-invite on approval. That
+                // endpoint still exists for the admin dashboard's manual
+                // "Resend" button.
+                await sendPortalInviteEmail({
+                    first_name: applicationRecord.first_name,
+                    email: applicationRecord.email,
+                    application_type: applicationRecord.application_type,
+                });
 
                 return res.status(200).json({ received: true, recorded: true });
             }
