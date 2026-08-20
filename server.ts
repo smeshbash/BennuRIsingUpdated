@@ -366,6 +366,11 @@ async function startServer() {
                 <a href="${donationLink}" style="display:inline-block;background:#003F7F;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:8px;font-size:14px;">${donationLink}</a>
               </div>
 
+              <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:20px;margin:24px 0;">
+                <h3 style="color:#92400e;margin-top:0;font-size:15px;">Certificate eligibility</h3>
+                <p style="margin:0;font-size:13px;line-height:1.6;color:#78350f;">To receive an internship certificate, volunteers/interns must achieve the prescribed fundraising target — demonstrating effective fundraising, managerial, and interpersonal skills — and actively participate in a minimum of five events conducted by Bennu Rising International Foundation. The internship certificate will be issued only upon fulfilling both of these requirements.</p>
+              </div>
+
               <p>Thank you for saying yes. We can't wait to see what we build together.</p>
               <p style="margin-top:24px;">With gratitude,<br/>The Bennu Rising International Foundation Team</p>
               <p style="color:#6b7280;font-size:13px;margin-top:24px;border-top:1px solid #e5e7eb;padding-top:16px;">Bennu Rising International Foundation<br/>10/62, Odakkal Sreepatham, Eruva East PO, Kayamkulam, Muthukulam, Karthikappally, Alappuzha, Kerala, India - 690506</p>
@@ -429,6 +434,11 @@ async function startServer() {
 
               <div style="text-align:center;margin:24px 0;">
                 <a href="${portalLink}" style="display:inline-block;background:#003F7F;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:8px;font-size:14px;">Go to your portal</a>
+              </div>
+
+              <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:20px;margin:24px 0;">
+                <h3 style="color:#92400e;margin-top:0;font-size:15px;">Certificate eligibility</h3>
+                <p style="margin:0;font-size:13px;line-height:1.6;color:#78350f;">To receive an internship certificate, volunteers/interns must achieve the prescribed fundraising target — demonstrating effective fundraising, managerial, and interpersonal skills — and actively participate in a minimum of five events conducted by Bennu Rising International Foundation. The internship certificate will be issued only upon fulfilling both of these requirements.</p>
               </div>
 
               <p>We're excited to have you fully on board. If you have any trouble logging in, just reply to this email.</p>
